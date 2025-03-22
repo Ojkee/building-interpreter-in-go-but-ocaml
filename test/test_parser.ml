@@ -3,7 +3,7 @@ open Lib.Lexer
 open Lib.Ast
 open Lib.Parser
 
-let test_let_statement_idents_errors () =
+let test_let_statement_idents () =
   let cases =
     [
       ( "let x = 5;\nlet y = 10;\nlet foobar = 838383;",
@@ -40,7 +40,9 @@ let test_let_statement_idents_errors () =
         let parsed_program = input |> tokenize |> parse in
         let idents prog =
           List.map
-            (function LetStatement { ident; _ } -> ident)
+            (function
+              | LetStatement { ident; _ } -> ident
+              | _ -> failwith "Wrong statement type")
             prog.statements
         in
         check
@@ -55,9 +57,45 @@ let test_let_statement_idents_errors () =
   in
   List.iter test_fn cases
 
+let test_return_statement () =
+  let cases =
+    [
+      ( "return 5;\nreturn 10;\nreturn 993322;",
+        {
+          statements =
+            [
+              ReturnStatement (Identifier (IDENT ""));
+              ReturnStatement (Identifier (IDENT ""));
+              ReturnStatement (Identifier (IDENT ""));
+            ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let parsed_program = input |> tokenize |> parse in
+        let rets prog =
+          List.map
+            (function
+              | ReturnStatement _ -> "return"
+              | _ -> failwith "Wrong statement type")
+            prog.statements
+        in
+        check
+          (testable (Fmt.of_to_string (fun x -> String.concat "\n" x)) ( = ))
+          ("Parsing:\n" ^ input) (rets expected) (rets parsed_program);
+        check
+          (testable (Fmt.of_to_string (fun x -> String.concat "\n" x)) ( = ))
+          ("Parsing:\n" ^ input) expected.errors parsed_program.errors
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
       ( "Parsing let statement",
-        [ test_case "Basic" `Quick test_let_statement_idents_errors ] );
+        [ test_case "Basic" `Quick test_let_statement_idents ] );
+      ( "Parsing return statement",
+        [ test_case "Basic" `Quick test_return_statement ] );
     ]

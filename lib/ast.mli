@@ -1,5 +1,10 @@
-type expression = Identifier of Lexer.token
-type statement = LetStatement of { ident : expression; value : expression }
+type token = Lexer.token
+type expression = Identifier of token
+
+type statement =
+  | LetStatement of { ident : expression; value : expression }
+  | ReturnStatement of expression
+
 type node = Statement of statement | Expression of expression
 type program = { statements : statement list; errors : string list }
 

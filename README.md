@@ -4,8 +4,9 @@ This project is an implementation of the Monkey programming language in OCaml, i
 
 # TODO
 - [x] the Lexer
-- [ ] the Parser
-    - [ ] Let Statements
+- [x] the Parser
+    - [x] Let Statements
+    - [ ] Return Statements
 - [ ] the Abstract Syntax Tree (AST)
 - [ ] the Internal object system
 - [ ] the Evaluator 

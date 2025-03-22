@@ -15,7 +15,8 @@ let parse (tokens : Lexer.token list) : program =
     | [] -> { statements = List.rev stmts; errors = List.rev errs }
     | [ EOF ] -> { statements = List.rev stmts; errors = List.rev errs }
     | KEYWORD LET :: IDENT x :: OPERATOR ASSIGN :: t ->
-        advance (skip_till_semicolon t)
+        advance
+          (skip_till_semicolon t) (* TODO: PARSE BODY*)
           (LetStatement
              { ident = Identifier (IDENT x); value = Identifier (IDENT "") }
           :: stmts)
@@ -28,6 +29,11 @@ let parse (tokens : Lexer.token list) : program =
         | h1, _ ->
             advance (List.tl tokens) stmts
               (expected_err "IDENT" (string_of_token h1) :: errs))
+    | KEYWORD RETURN :: t ->
+        advance
+          (skip_till_semicolon t) (* TODO: PARSE BODY*)
+          (ReturnStatement (Identifier (IDENT "")) :: stmts)
+          errs
     | _ :: t -> advance t stmts errs
   in
   advance tokens [] []
