@@ -91,6 +91,33 @@ let test_return_statement () =
   in
   List.iter test_fn cases
 
+let test_string () =
+  let cases =
+    [
+      ( {
+          statements =
+            [
+              LetStatement
+                {
+                  ident = Identifier (IDENT "var");
+                  value = Identifier (IDENT "anotherVar");
+                };
+            ];
+          errors = [];
+        },
+        [ "let var = anotherVar;" ] );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        check
+          (testable (Fmt.of_to_string (fun x -> String.concat "\n" x)) ( = ))
+          ("Parsing:\n" ^ string_of_program input)
+          expected
+          (List.map string_of_statement input.statements)
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -98,4 +125,5 @@ let () =
         [ test_case "Basic" `Quick test_let_statement_idents ] );
       ( "Parsing return statement",
         [ test_case "Basic" `Quick test_return_statement ] );
+      ("Testing String", [ test_case "Basic" `Quick test_string ]);
     ]
