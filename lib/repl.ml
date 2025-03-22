@@ -1,7 +1,7 @@
 let prompt = ">> "
 
 let rec repl () =
-  print_endline "Enter lines";
+  print_endline "Monkey REPL (Lexer)";
   print_string prompt;
   match read_line () with
   | "exit" -> exit 0

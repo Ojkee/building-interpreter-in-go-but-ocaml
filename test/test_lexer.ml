@@ -25,37 +25,37 @@ let test_tokenize () =
         \ let result = add(five, ten);",
         [
           KEYWORD LET;
-          INDENT "five";
+          IDENT "five";
           OPERATOR ASSIGN;
-          INT 5;
+          INT "5";
           DELIMITER SEMICOLON;
           KEYWORD LET;
-          INDENT "ten";
+          IDENT "ten";
           OPERATOR ASSIGN;
-          INT 10;
+          INT "10";
           DELIMITER SEMICOLON;
           KEYWORD LET;
-          INDENT "add";
+          IDENT "add";
           OPERATOR ASSIGN;
           KEYWORD FUNCTION;
           PAREN LPAREN;
-          INDENT "x";
+          IDENT "x";
           DELIMITER COMMA;
-          INDENT "y";
+          IDENT "y";
           PAREN RPAREN;
           PAREN LBRACE;
-          INDENT "x";
+          IDENT "x";
           OPERATOR PLUS;
-          INDENT "y";
+          IDENT "y";
           PAREN RBRACE;
           KEYWORD LET;
-          INDENT "result";
+          IDENT "result";
           OPERATOR ASSIGN;
-          INDENT "add";
+          IDENT "add";
           PAREN LPAREN;
-          INDENT "five";
+          IDENT "five";
           DELIMITER COMMA;
-          INDENT "ten";
+          IDENT "ten";
           PAREN RPAREN;
           DELIMITER SEMICOLON;
           EOF;
@@ -66,13 +66,13 @@ let test_tokenize () =
           OPERATOR MINUS;
           OPERATOR SLASH;
           OPERATOR ASTERISK;
-          INT 5;
+          INT "5";
           DELIMITER SEMICOLON;
-          INT 5;
+          INT "5";
           OPERATOR LT;
-          INT 10;
+          INT "10";
           OPERATOR GT;
-          INT 5;
+          INT "5";
           DELIMITER SEMICOLON;
           EOF;
         ] );
@@ -80,9 +80,9 @@ let test_tokenize () =
         [
           KEYWORD IF;
           PAREN LPAREN;
-          INT 5;
+          INT "5";
           OPERATOR LT;
-          INT 10;
+          INT "10";
           PAREN RPAREN;
           PAREN LBRACE;
           KEYWORD RETURN;
@@ -99,26 +99,25 @@ let test_tokenize () =
         ] );
       ( "10 == 10;\n10 != 9;",
         [
-          INT 10;
+          INT "10";
           OPERATOR EQ;
-          INT 10;
+          INT "10";
           DELIMITER SEMICOLON;
-          INT 10;
+          INT "10";
           OPERATOR NOT_EQ;
-          INT 9;
+          INT "9";
           DELIMITER SEMICOLON;
           EOF;
         ] );
     ]
   in
-  let test_case = function
+  let test_fn = function
     | input, expected ->
         check
-          (list
-             (testable (Fmt.of_to_string (fun x -> string_of_token x)) ( = )))
+          (list (testable (Fmt.of_to_string string_of_token) ( = )))
           ("Lexing:\n" ^ input) expected (tokenize input)
   in
-  List.iter test_case cases
+  List.iter test_fn cases
 
 let () =
   run "Lexer Test" [ ("Tokenize", [ test_case "Basic" `Quick test_tokenize ]) ]

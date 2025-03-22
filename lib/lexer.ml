@@ -17,9 +17,9 @@ type parenthesis = LPAREN | RPAREN | LBRACE | RBRACE
 type token =
   | ILLEGAL of string
   | EOF
-  | INDENT of string
-  | INT of int
-  | FLOAT of float
+  | IDENT of string
+  | INT of string
+  | FLOAT of string
   | OPERATOR of operator
   | PAREN of parenthesis
   | DELIMITER of delimiter
@@ -57,9 +57,9 @@ let string_of_parenthesis = function
 let string_of_token = function
   | ILLEGAL x -> "ILLEGAL(" ^ x ^ ")"
   | EOF -> "EOF"
-  | INDENT x -> "INDENT(" ^ x ^ ")"
-  | INT i -> string_of_int i
-  | FLOAT f -> string_of_float f
+  | IDENT x -> "IDENT(" ^ x ^ ")"
+  | INT i -> i
+  | FLOAT f -> f
   | OPERATOR op -> string_of_operator op
   | PAREN p -> string_of_parenthesis p
   | DELIMITER d -> string_of_delimiter d
@@ -109,38 +109,38 @@ let read_number (chars : char list) : string * char list =
 let get_keyword_or_ident (word : string) : token =
   match KeywordsMap.find_opt word keywords_lookup with
   | Some keywordType -> keywordType
-  | None -> INDENT word
+  | None -> IDENT word
 
 let run (chars : char list) : token list =
-  let rec run' chars dst =
+  let rec advance chars dst =
     match chars with
     | [] -> EOF :: dst |> List.rev
-    | '=' :: '=' :: tail -> run' tail (OPERATOR EQ :: dst)
-    | '!' :: '=' :: tail -> run' tail (OPERATOR NOT_EQ :: dst)
-    | '=' :: tail -> run' tail (OPERATOR ASSIGN :: dst)
-    | '+' :: tail -> run' tail (OPERATOR PLUS :: dst)
-    | '-' :: tail -> run' tail (OPERATOR MINUS :: dst)
-    | '!' :: tail -> run' tail (OPERATOR BANG :: dst)
-    | '*' :: tail -> run' tail (OPERATOR ASTERISK :: dst)
-    | '/' :: tail -> run' tail (OPERATOR SLASH :: dst)
-    | '<' :: tail -> run' tail (OPERATOR LT :: dst)
-    | '>' :: tail -> run' tail (OPERATOR GT :: dst)
-    | '(' :: tail -> run' tail (PAREN LPAREN :: dst)
-    | ')' :: tail -> run' tail (PAREN RPAREN :: dst)
-    | '{' :: tail -> run' tail (PAREN LBRACE :: dst)
-    | '}' :: tail -> run' tail (PAREN RBRACE :: dst)
-    | ',' :: tail -> run' tail (DELIMITER COMMA :: dst)
-    | ';' :: tail -> run' tail (DELIMITER SEMICOLON :: dst)
-    | h :: tail when is_whitespace h -> run' tail dst
+    | '=' :: '=' :: tail -> advance tail (OPERATOR EQ :: dst)
+    | '!' :: '=' :: tail -> advance tail (OPERATOR NOT_EQ :: dst)
+    | '=' :: tail -> advance tail (OPERATOR ASSIGN :: dst)
+    | '+' :: tail -> advance tail (OPERATOR PLUS :: dst)
+    | '-' :: tail -> advance tail (OPERATOR MINUS :: dst)
+    | '!' :: tail -> advance tail (OPERATOR BANG :: dst)
+    | '*' :: tail -> advance tail (OPERATOR ASTERISK :: dst)
+    | '/' :: tail -> advance tail (OPERATOR SLASH :: dst)
+    | '<' :: tail -> advance tail (OPERATOR LT :: dst)
+    | '>' :: tail -> advance tail (OPERATOR GT :: dst)
+    | '(' :: tail -> advance tail (PAREN LPAREN :: dst)
+    | ')' :: tail -> advance tail (PAREN RPAREN :: dst)
+    | '{' :: tail -> advance tail (PAREN LBRACE :: dst)
+    | '}' :: tail -> advance tail (PAREN RBRACE :: dst)
+    | ',' :: tail -> advance tail (DELIMITER COMMA :: dst)
+    | ';' :: tail -> advance tail (DELIMITER SEMICOLON :: dst)
+    | h :: tail when is_whitespace h -> advance tail dst
     | h :: _ when is_alpha h ->
         let word, rest = read_identifier chars in
-        run' rest (get_keyword_or_ident word :: dst)
+        advance rest (get_keyword_or_ident word :: dst)
     | h :: _ when is_digit h ->
         let num, rest = read_number chars in
-        run' rest (INT (int_of_string num) :: dst)
-    | h :: tail -> run' tail (ILLEGAL (String.make 1 h) :: dst)
+        advance rest (INT num :: dst)
+    | h :: tail -> advance tail (ILLEGAL (String.make 1 h) :: dst)
   in
-  run' chars []
+  advance chars []
 
 let tokenize (content : string) : token list =
   content |> char_list_of_string |> run

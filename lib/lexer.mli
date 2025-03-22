@@ -17,9 +17,9 @@ type parenthesis = LPAREN | RPAREN | LBRACE | RBRACE
 type token =
   | ILLEGAL of string
   | EOF
-  | INDENT of string
-  | INT of int
-  | FLOAT of float
+  | IDENT of string
+  | INT of string
+  | FLOAT of string
   | OPERATOR of operator
   | PAREN of parenthesis
   | DELIMITER of delimiter
