@@ -1,5 +1,9 @@
 type token = Lexer.token
-type expression = Identifier of token | PLACEHOLDER_EXPR
+
+type expression =
+  | Identifier of token
+  | IntegerLiteral of int
+  | PLACEHOLDER_EXPR
 
 type statement =
   | LetStatement of { ident : expression; value : expression }

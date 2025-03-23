@@ -70,11 +70,15 @@ let test_let_statement_idents () =
   let test_fn = function
     | input, expected ->
         let parsed_program = input |> tokenize |> parse in
+        (* parsed_program |> string_of_program |> print_endline; *)
         let idents prog =
           List.map
             (function
               | LetStatement { ident; _ } -> ident
-              | _ -> failwith "Wrong statement type")
+              | x ->
+                  failwith
+                    (Printf.sprintf "Wrong statement type: %s"
+                       (string_of_statement x)))
             prog.statements
         in
         check
@@ -96,9 +100,9 @@ let test_return_statement () =
         {
           statements =
             [
-              ReturnStatement (Identifier (IDENT ""));
-              ReturnStatement (Identifier (IDENT ""));
-              ReturnStatement (Identifier (IDENT ""));
+              ReturnStatement PLACEHOLDER_EXPR;
+              ReturnStatement PLACEHOLDER_EXPR;
+              ReturnStatement PLACEHOLDER_EXPR;
             ];
           errors = [];
         } );
@@ -124,9 +128,45 @@ let test_return_statement () =
   List.iter test_fn cases
 
 let test_identfier_expression () =
-  let cases = [] in
-  ignore cases;
-  failwith "TODO"
+  let cases =
+    [
+      ( "foobar;",
+        {
+          statements =
+            [
+              ExpressionStatement (IDENT "foobar", Identifier (IDENT "foobar"));
+            ];
+          errors = [];
+        } );
+      ( "5;",
+        {
+          statements = [ ExpressionStatement (INT "5", IntegerLiteral 5) ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let parsed_program = input |> tokenize |> parse in
+        let expr_stmts prog =
+          List.map
+            (function
+              | ExpressionStatement (x, y) -> ExpressionStatement (x, y)
+              | _ -> failwith "Wrong statement type")
+            prog.statements
+        in
+        check
+          (testable
+             (Fmt.of_to_string (fun x ->
+                  String.concat "\n" (List.map string_of_statement x)))
+             ( = ))
+          ("Parsing:\n" ^ input) (expr_stmts expected)
+          (expr_stmts parsed_program);
+        check
+          (testable (Fmt.of_to_string (fun x -> String.concat "\n" x)) ( = ))
+          ("Parsing:\n" ^ input) expected.errors parsed_program.errors
+  in
+  List.iter test_fn cases
 
 let () =
   run "Parser Test"
