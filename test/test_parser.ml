@@ -3,6 +3,38 @@ open Lib.Lexer
 open Lib.Ast
 open Lib.Parser
 
+let test_string () =
+  let cases =
+    [
+      ( {
+          statements =
+            [
+              LetStatement
+                {
+                  ident = Identifier (IDENT "var");
+                  value = Identifier (IDENT "anotherVar");
+                };
+            ];
+          errors = [];
+        },
+        [ "let var = anotherVar;" ] );
+      ( {
+          statements = [ ReturnStatement (Identifier (IDENT "var")) ];
+          errors = [];
+        },
+        [ "return var;" ] );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        check
+          (testable (Fmt.of_to_string (fun x -> String.concat "\n" x)) ( = ))
+          ("Parsing:\n" ^ string_of_program input)
+          expected
+          (List.map string_of_statement input.statements)
+  in
+  List.iter test_fn cases
+
 let test_let_statement_idents () =
   let cases =
     [
@@ -11,13 +43,13 @@ let test_let_statement_idents () =
           statements =
             [
               LetStatement
-                { ident = Identifier (IDENT "x"); value = Identifier (INT "_") };
+                { ident = Identifier (IDENT "x"); value = PLACEHOLDER_EXPR };
               LetStatement
-                { ident = Identifier (IDENT "y"); value = Identifier (INT "_") };
+                { ident = Identifier (IDENT "y"); value = PLACEHOLDER_EXPR };
               LetStatement
                 {
                   ident = Identifier (IDENT "foobar");
-                  value = Identifier (INT "_");
+                  value = PLACEHOLDER_EXPR;
                 };
             ];
           errors = [];
@@ -91,39 +123,19 @@ let test_return_statement () =
   in
   List.iter test_fn cases
 
-let test_string () =
-  let cases =
-    [
-      ( {
-          statements =
-            [
-              LetStatement
-                {
-                  ident = Identifier (IDENT "var");
-                  value = Identifier (IDENT "anotherVar");
-                };
-            ];
-          errors = [];
-        },
-        [ "let var = anotherVar;" ] );
-    ]
-  in
-  let test_fn = function
-    | input, expected ->
-        check
-          (testable (Fmt.of_to_string (fun x -> String.concat "\n" x)) ( = ))
-          ("Parsing:\n" ^ string_of_program input)
-          expected
-          (List.map string_of_statement input.statements)
-  in
-  List.iter test_fn cases
+let test_identfier_expression () =
+  let cases = [] in
+  ignore cases;
+  failwith "TODO"
 
 let () =
   run "Parser Test"
     [
+      ("Testing String", [ test_case "Basic" `Quick test_string ]);
       ( "Parsing let statement",
         [ test_case "Basic" `Quick test_let_statement_idents ] );
       ( "Parsing return statement",
         [ test_case "Basic" `Quick test_return_statement ] );
-      ("Testing String", [ test_case "Basic" `Quick test_string ]);
+      ( "Parsing identifier expression",
+        [ test_case "Basic" `Quick test_identfier_expression ] );
     ]

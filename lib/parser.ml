@@ -9,7 +9,7 @@ open Ast
 (*   | PRODUCT *)
 (*   | PREFIX *)
 (*   | CALL *)
-(**)
+
 (* let precedence_value = function *)
 (*   | LOWEST -> 0 *)
 (*   | EQUALS -> 1 *)
@@ -27,7 +27,7 @@ let rec skip_till_semicolon = function
 
 let expected_err f s = Printf.sprintf "expected '%s'; got '%s'" f s
 
-let parse (tokens : Lexer.token list) : program =
+let parse (tokens : token list) : program =
   let rec advance tokens stmts errs =
     match tokens with
     | [] -> { statements = List.rev stmts; errors = List.rev errs }
@@ -52,6 +52,7 @@ let parse (tokens : Lexer.token list) : program =
           (skip_till_semicolon t) (* TODO: PARSE BODY *)
           (ReturnStatement (Identifier (IDENT "")) :: stmts)
           errs
+    (* | IDENT x :: DELIMITER SEMICOLON :: t ->  *)
     | _ :: t -> advance t stmts errs
   in
   advance tokens [] []

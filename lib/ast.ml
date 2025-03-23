@@ -1,10 +1,10 @@
 type token = Lexer.token
-type expression = Identifier of token
+type expression = Identifier of token | PLACEHOLDER_EXPR
 
 type statement =
   | LetStatement of { ident : expression; value : expression }
   | ReturnStatement of expression
-  | ExpressionStatement of token * expression
+  | ExpressionStatement of token * expression (* first token of expression *)
 
 type node = Statement of statement | Expression of expression
 type program = { statements : statement list; errors : string list }
@@ -12,6 +12,7 @@ type program = { statements : statement list; errors : string list }
 let string_of_expression = function
   | Identifier (IDENT x) -> x
   | Identifier tok -> "Identifier(" ^ Lexer.string_of_token tok ^ ")"
+  | PLACEHOLDER_EXPR -> "PLACEHOLDER_EXRP"
 
 let string_of_statement = function
   | LetStatement { ident; value } -> (
