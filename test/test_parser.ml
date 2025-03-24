@@ -132,15 +132,12 @@ let test_identfier_expression () =
     [
       ( "foobar;",
         {
-          statements =
-            [
-              ExpressionStatement (IDENT "foobar", Identifier (IDENT "foobar"));
-            ];
+          statements = [ ExpressionStatement (Identifier (IDENT "foobar")) ];
           errors = [];
         } );
       ( "5;",
         {
-          statements = [ ExpressionStatement (INT "5", IntegerLiteral 5) ];
+          statements = [ ExpressionStatement (IntegerLiteral (INT "5", 5)) ];
           errors = [];
         } );
     ]
@@ -151,7 +148,7 @@ let test_identfier_expression () =
         let expr_stmts prog =
           List.map
             (function
-              | ExpressionStatement (x, y) -> ExpressionStatement (x, y)
+              | ExpressionStatement x -> ExpressionStatement x
               | _ -> failwith "Wrong statement type")
             prog.statements
         in
@@ -168,6 +165,49 @@ let test_identfier_expression () =
   in
   List.iter test_fn cases
 
+let test_prefix_expressions () =
+  let cases =
+    [
+      ( "!5",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Prefix (OPERATOR BANG, "!", IntegerLiteral (INT "5", 5)));
+            ];
+          errors = [];
+        } );
+      ( "-15",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Prefix (OPERATOR MINUS, "-", IntegerLiteral (INT "15", 15)));
+            ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let parsed_program = input |> tokenize |> parse in
+        let expr_stmts prog =
+          List.map
+            (function
+              | ExpressionStatement x -> ExpressionStatement x
+              | _ -> failwith "Wrong statement type")
+            prog.statements
+        in
+        check
+          (testable
+             (Fmt.of_to_string (fun x ->
+                  String.concat "\n" (List.map string_of_statement x)))
+             ( = ))
+          ("Parsing:\n" ^ input) (expr_stmts expected)
+          (expr_stmts parsed_program)
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -176,6 +216,8 @@ let () =
         [ test_case "Basic" `Quick test_let_statement_idents ] );
       ( "Parsing return statement",
         [ test_case "Basic" `Quick test_return_statement ] );
-      ( "Parsing identifier expression",
+      ( "Parsing identifier expression statements",
         [ test_case "Basic" `Quick test_identfier_expression ] );
+      ( "Parsing prefix expression",
+        [ test_case "Basic" `Quick test_prefix_expressions ] );
     ]

@@ -1,24 +1,6 @@
 open Lexer
 open Ast
 
-(* type precedence = *)
-(*   | LOWEST *)
-(*   | EQUALS *)
-(*   | LESSGREATER *)
-(*   | SUM *)
-(*   | PRODUCT *)
-(*   | PREFIX *)
-(*   | CALL *)
-
-(* let precedence_value = function *)
-(*   | LOWEST -> 0 *)
-(*   | EQUALS -> 1 *)
-(*   | LESSGREATER -> 2 *)
-(*   | SUM -> 3 *)
-(*   | PRODUCT -> 4 *)
-(*   | PREFIX -> 5 *)
-(*   | CALL -> 6 *)
-
 let rec skip_till_semicolon = function
   | [] -> []
   | [ EOF ] -> []
@@ -26,6 +8,31 @@ let rec skip_till_semicolon = function
   | _ :: t -> skip_till_semicolon t
 
 let expected_err f s = Printf.sprintf "expected '%s'; got '%s'" f s
+
+let rec parse_expression (tokens : token list) :
+    (expression * token list) option =
+  match parse_prefix tokens with
+  | Some (_, _) as res -> res
+  | None -> (
+      match tokens with
+      | IDENT x :: DELIMITER SEMICOLON :: t -> Some (Identifier (IDENT x), t)
+      | IDENT _ :: t -> Some (PLACEHOLDER_EXPR, t) (* TODO: PARSE BODY *)
+      | INT x :: t -> Some (IntegerLiteral (INT x, int_of_string x), t)
+      | _ -> None)
+
+and parse_prefix (tokens : token list) : (expression * token list) option =
+  match tokens with
+  | OPERATOR MINUS :: t -> (
+      match parse_expression t with
+      | Some (expr, rest) -> Some (Prefix (OPERATOR MINUS, "-", expr), rest)
+      | None -> None)
+  | OPERATOR BANG :: t -> (
+      match parse_expression t with
+      | Some (expr, rest) -> Some (Prefix (OPERATOR BANG, "!", expr), rest)
+      | None -> None)
+  | _ -> None
+
+let is_ident_or_int = function INT _ | IDENT _ -> true | _ -> false
 
 let parse (tokens : token list) : program =
   let rec advance tokens stmts errs =
@@ -56,19 +63,16 @@ let parse (tokens : token list) : program =
           (skip_till_semicolon t) (* TODO: PARSE BODY *)
           (ReturnStatement PLACEHOLDER_EXPR :: stmts)
           errs
-    | IDENT x :: DELIMITER SEMICOLON :: t ->
-        advance t
-          (ExpressionStatement (IDENT x, Identifier (IDENT x)) :: stmts)
-          errs
-    | IDENT x :: t ->
-        advance t
-          (ExpressionStatement (IDENT x, Identifier (IDENT "a")) :: stmts)
-          errs
-    | INT x :: t ->
-        advance t
-          (ExpressionStatement (INT x, IntegerLiteral (int_of_string x))
-          :: stmts)
-          errs
+    | h :: t when match h with INT _ | IDENT _ -> true | _ -> false -> (
+        match parse_expression tokens with
+        | Some (expr, rest) ->
+            advance rest (ExpressionStatement expr :: stmts) errs
+        | None -> advance t stmts ("Parse int err/ident" :: errs))
+    | h :: t when h = OPERATOR MINUS || h = OPERATOR BANG -> (
+        match parse_prefix tokens with
+        | Some (expr, rest) ->
+            advance rest (ExpressionStatement expr :: stmts) errs
+        | None -> advance t stmts ("Parse prefix err" :: errs))
     | _ :: t -> advance t stmts errs
   in
   advance tokens [] []

@@ -1,22 +1,34 @@
 type token = Lexer.token
+type operator = string
 
 type expression =
   | Identifier of token
-  | IntegerLiteral of int
+  | IntegerLiteral of token * int
+  | Prefix of token * operator * expression
   | PLACEHOLDER_EXPR
 
 type statement =
   | LetStatement of { ident : expression; value : expression }
   | ReturnStatement of expression
-  | ExpressionStatement of token * expression (* first token of expression *)
+  | ExpressionStatement of expression (* first token of expression *)
 
 type node = Statement of statement | Expression of expression
 type program = { statements : statement list; errors : string list }
 
-let string_of_expression = function
+type precedence =
+  | LOWEST
+  | EQUALS
+  | LESSGREATER
+  | SUM
+  | PRODUCT
+  | PREFIX
+  | CALL
+
+let rec string_of_expression = function
   | Identifier (IDENT x) -> x
   | Identifier tok -> "Identifier(" ^ Lexer.string_of_token tok ^ ")"
-  | IntegerLiteral x -> string_of_int x
+  | IntegerLiteral (_, x) -> string_of_int x
+  | Prefix (_, op, x) -> op ^ "(" ^ string_of_expression x ^ ")"
   | PLACEHOLDER_EXPR -> "PLACEHOLDER_EXRP"
 
 let string_of_statement = function
@@ -26,7 +38,7 @@ let string_of_statement = function
           "let " ^ x ^ " = " ^ string_of_expression value ^ ";"
       | _ -> "")
   | ReturnStatement x -> "return " ^ string_of_expression x ^ ";"
-  | ExpressionStatement (_, e) ->
+  | ExpressionStatement e ->
       "ExpressionStatement {" ^ string_of_expression e ^ "}"
 
 let string_of_node = function
@@ -39,3 +51,12 @@ let string_of_program (prog : program) : string =
   ^ "\n]\nerrors = [\n"
   ^ String.concat "\n\t" prog.errors
   ^ "\n]"
+
+let precedence_value = function
+  | LOWEST -> 0
+  | EQUALS -> 1
+  | LESSGREATER -> 2
+  | SUM -> 3
+  | PRODUCT -> 4
+  | PREFIX -> 5
+  | CALL -> 6
