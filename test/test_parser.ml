@@ -208,6 +208,57 @@ let test_prefix_expressions () =
   in
   List.iter test_fn cases
 
+let test_infix_epressins () =
+  let cases =
+    [
+      ( "5 + 5",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( IntegerLiteral (INT "5", 5),
+                     OPERATOR PLUS,
+                     "+",
+                     IntegerLiteral (INT "5", 5) ));
+            ];
+          errors = [];
+        } );
+      ( "5 - 5",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( IntegerLiteral (INT "5", 5),
+                     OPERATOR MINUS,
+                     "-",
+                     IntegerLiteral (INT "5", 5) ));
+            ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let parsed_program = input |> tokenize |> parse in
+        let expr_stmts prog =
+          List.map
+            (function
+              | ExpressionStatement x -> ExpressionStatement x
+              | _ -> failwith "Wrong statement type")
+            prog.statements
+        in
+        check
+          (testable
+             (Fmt.of_to_string (fun x ->
+                  String.concat "\n" (List.map string_of_statement x)))
+             ( = ))
+          ("Parsing:\n" ^ input) (expr_stmts expected)
+          (expr_stmts parsed_program)
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -220,4 +271,6 @@ let () =
         [ test_case "Basic" `Quick test_identfier_expression ] );
       ( "Parsing prefix expression",
         [ test_case "Basic" `Quick test_prefix_expressions ] );
+      ( "Parsing infix expression",
+        [ test_case "Basic" `Quick test_infix_epressins ] );
     ]

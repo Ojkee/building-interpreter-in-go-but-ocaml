@@ -9,30 +9,35 @@ let rec skip_till_semicolon = function
 
 let expected_err f s = Printf.sprintf "expected '%s'; got '%s'" f s
 
-let rec parse_expression (tokens : token list) :
+let rec parse_expression (tokens : token list) (prec : precedence) :
     (expression * token list) option =
+  ignore prec;
   match parse_prefix tokens with
-  | Some (_, _) as res -> res
-  | None -> (
-      match tokens with
-      | IDENT x :: DELIMITER SEMICOLON :: t -> Some (Identifier (IDENT x), t)
-      | IDENT _ :: t -> Some (PLACEHOLDER_EXPR, t) (* TODO: PARSE BODY *)
-      | INT x :: t -> Some (IntegerLiteral (INT x, int_of_string x), t)
-      | _ -> None)
+  | Some (_, OPERATOR x :: _) when Lexer.is_infix_operator x ->
+      parse_infix tokens
+  | Some _ as res -> res
+  | None -> None
 
 and parse_prefix (tokens : token list) : (expression * token list) option =
   match tokens with
-  | OPERATOR MINUS :: t -> (
-      match parse_expression t with
-      | Some (expr, rest) -> Some (Prefix (OPERATOR MINUS, "-", expr), rest)
-      | None -> None)
-  | OPERATOR BANG :: t -> (
-      match parse_expression t with
-      | Some (expr, rest) -> Some (Prefix (OPERATOR BANG, "!", expr), rest)
+  | IDENT x :: DELIMITER SEMICOLON :: t -> Some (Identifier (IDENT x), t)
+  | INT x :: t -> Some (IntegerLiteral (INT x, int_of_string x), t)
+  | OPERATOR op :: t when match op with MINUS | BANG -> true | _ -> false -> (
+      match parse_expression t PREFIX with
+      | Some (expr, rest) ->
+          Some (Prefix (OPERATOR op, Lexer.string_of_operator op, expr), rest)
       | None -> None)
   | _ -> None
 
-let is_ident_or_int = function INT _ | IDENT _ -> true | _ -> false
+and parse_infix (tokens : token list) : (expression * token list) option =
+  match parse_prefix tokens with
+  | Some (lexpr, OPERATOR h :: rest) when Lexer.is_infix_operator h -> (
+      let cur_prec = precedence_of_operator h in
+      match parse_expression rest cur_prec with
+      | Some (rexpr, rrest) ->
+          Some (Infix (lexpr, OPERATOR h, string_of_operator h, rexpr), rrest)
+      | None -> None)
+  | _ -> None
 
 let parse (tokens : token list) : program =
   let rec advance tokens stmts errs =
@@ -63,16 +68,14 @@ let parse (tokens : token list) : program =
           (skip_till_semicolon t) (* TODO: PARSE BODY *)
           (ReturnStatement PLACEHOLDER_EXPR :: stmts)
           errs
-    | h :: t when match h with INT _ | IDENT _ -> true | _ -> false -> (
-        match parse_expression tokens with
+    | h :: t
+      when match h with
+           | INT _ | IDENT _ | OPERATOR MINUS | OPERATOR BANG -> true
+           | _ -> false -> (
+        match parse_expression tokens PREFIX with
         | Some (expr, rest) ->
             advance rest (ExpressionStatement expr :: stmts) errs
         | None -> advance t stmts ("Parse int err/ident" :: errs))
-    | h :: t when h = OPERATOR MINUS || h = OPERATOR BANG -> (
-        match parse_prefix tokens with
-        | Some (expr, rest) ->
-            advance rest (ExpressionStatement expr :: stmts) errs
-        | None -> advance t stmts ("Parse prefix err" :: errs))
     | _ :: t -> advance t stmts errs
   in
   advance tokens [] []

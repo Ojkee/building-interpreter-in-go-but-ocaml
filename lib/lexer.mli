@@ -28,3 +28,5 @@ type token =
 val string_of_token : token -> string
 val string_of_tokens : token list -> string
 val tokenize : string -> token list
+val string_of_operator : operator -> string
+val is_infix_operator : operator -> bool

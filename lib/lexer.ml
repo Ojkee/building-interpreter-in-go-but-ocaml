@@ -80,11 +80,13 @@ let keywords_lookup : token KeywordsMap.t =
     |> add "return" (KEYWORD RETURN))
 
 let char_list_of_string s = s |> String.to_seq |> List.of_seq
-
-(* let string_of_char_list ch = ch |> List.to_seq |> String.of_seq *)
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' | '_' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
 let is_whitespace = function ' ' | '\n' | '\t' | '\r' -> true | _ -> false
+
+let is_infix_operator = function
+  | PLUS | MINUS | SLASH | ASTERISK | EQ | NOT_EQ | LT | GT -> true
+  | _ -> false
 
 let string_rev (s : string) : string =
   s |> String.to_seq |> List.of_seq |> List.rev |> List.to_seq |> String.of_seq
