@@ -10,6 +10,7 @@ This project is an implementation of the Monkey programming language in OCaml, i
     - [x] Prefix Statements
     - [x] Infix Statements
     - [x] Precendence
+    - [x] Booleans
 - [ ] the Abstract Syntax Tree (AST)
 - [ ] the Internal object system
 - [ ] the Evaluator 

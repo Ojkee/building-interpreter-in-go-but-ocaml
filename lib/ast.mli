@@ -3,6 +3,7 @@ type token = Lexer.token
 type expression =
   | Identifier of token
   | IntegerLiteral of token * int
+  | Boolean of token * bool
   | Prefix of token * string * expression
   | Infix of expression * token * string * expression
   | PLACEHOLDER_EXPR

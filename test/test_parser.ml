@@ -77,7 +77,6 @@ let test_let_statement_idents () =
   let test_fn = function
     | input, expected ->
         let parsed_program = input |> tokenize |> parse in
-        (* parsed_program |> string_of_program |> print_endline; *)
         let idents prog =
           List.map
             (function
@@ -190,6 +189,24 @@ let test_prefix_expressions () =
             [
               ExpressionStatement
                 (Prefix (OPERATOR MINUS, "-", IntegerLiteral (INT "15", 15)));
+            ];
+          errors = [];
+        } );
+      ( "!true",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Prefix (OPERATOR BANG, "!", Boolean (KEYWORD TRUE, true)));
+            ];
+          errors = [];
+        } );
+      ( "!false",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Prefix (OPERATOR BANG, "!", Boolean (KEYWORD FALSE, false)));
             ];
           errors = [];
         } );
@@ -359,6 +376,10 @@ let test_operator_precendence () =
       ("5 > 4 == 3 < 4", "((5>4)==(3<4))");
       ("5 < 4 != 3 > 4", "((5<4)!=(3>4))");
       ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3+(4*5))==((3*1)+(4*5)))");
+      ("true", "true");
+      ("false", "false");
+      ("3 > 5 == false", "((3>5)==false)");
+      ("3 < 5 == true", "((3<5)==true)");
     ]
   in
   let test_fn = function
@@ -368,6 +389,59 @@ let test_operator_precendence () =
           (testable Fmt.string ( = ))
           ("Parsing:\n" ^ input) expected
           (String.concat "; " (List.map string_of_statement program.statements))
+  in
+  List.iter test_fn cases
+
+let test_boolean () =
+  let cases =
+    [
+      ( "true == true",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( Boolean (KEYWORD TRUE, true),
+                     OPERATOR EQ,
+                     "==",
+                     Boolean (KEYWORD TRUE, true) ));
+            ];
+          errors = [];
+        } );
+      ( "false == false",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( Boolean (KEYWORD FALSE, false),
+                     OPERATOR EQ,
+                     "==",
+                     Boolean (KEYWORD FALSE, false) ));
+            ];
+          errors = [];
+        } );
+      ( "true != false",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( Boolean (KEYWORD TRUE, true),
+                     OPERATOR NOT_EQ,
+                     "!=",
+                     Boolean (KEYWORD FALSE, false) ));
+            ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let program = input |> tokenize |> parse in
+        check
+          (testable (Fmt.of_to_string (fun x -> string_of_program x)) ( = ))
+          ("Parsing:\n" ^ input) expected program
   in
   List.iter test_fn cases
 
@@ -387,4 +461,5 @@ let () =
         [ test_case "Basic" `Quick test_infix_epressins ] );
       ( "Parsing operator precendence",
         [ test_case "Basic" `Quick test_operator_precendence ] );
+      ("Parsing boolean", [ test_case "Basic" `Quick test_boolean ]);
     ]

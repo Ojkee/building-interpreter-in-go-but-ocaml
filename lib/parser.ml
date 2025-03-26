@@ -22,6 +22,8 @@ and parse_prefix (tokens : token list) : (expression * token list) option =
   match tokens with
   | IDENT x :: t -> Some (Identifier (IDENT x), t)
   | INT x :: t -> Some (IntegerLiteral (INT x, int_of_string x), t)
+  | KEYWORD TRUE :: t -> Some (Boolean (KEYWORD TRUE, true), t)
+  | KEYWORD FALSE :: t -> Some (Boolean (KEYWORD FALSE, false), t)
   | OPERATOR op :: t when match op with MINUS | BANG -> true | _ -> false -> (
       match parse_expression t PREFIX with
       | Some (expr, rest) ->
@@ -73,7 +75,12 @@ let parse (tokens : token list) : program =
           errs
     | h :: t
       when match h with
-           | INT _ | IDENT _ | OPERATOR MINUS | OPERATOR BANG -> true
+           | INT _ | IDENT _
+           | OPERATOR MINUS
+           | OPERATOR BANG
+           | KEYWORD TRUE
+           | KEYWORD FALSE ->
+               true
            | _ -> false -> (
         match parse_expression tokens LOWEST with
         | Some (expr, rest) ->

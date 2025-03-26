@@ -45,7 +45,7 @@ let string_of_keyword = function
   | TRUE -> "true"
   | FALSE -> "false"
   | IF -> "if"
-  | ELSE -> "ELSE"
+  | ELSE -> "else"
   | RETURN -> "return"
 
 let string_of_parenthesis = function
