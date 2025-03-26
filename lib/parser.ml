@@ -29,6 +29,13 @@ and parse_prefix (tokens : token list) : (expression * token list) option =
       | Some (expr, rest) ->
           Some (Prefix (OPERATOR op, string_of_operator op, expr), rest)
       | None -> None)
+  | PAREN LPAREN :: t -> (
+      match parse_expression t LOWEST with
+      | Some (expr, rest) -> (
+          match rest with
+          | PAREN RPAREN :: rrest -> Some (expr, rrest)
+          | _ -> None)
+      | None -> None)
   | _ -> None
 
 and parse_infix (lexpr : expression) (tokens : token list) (prec : precedence) :
@@ -79,7 +86,8 @@ let parse (tokens : token list) : program =
            | OPERATOR MINUS
            | OPERATOR BANG
            | KEYWORD TRUE
-           | KEYWORD FALSE ->
+           | KEYWORD FALSE
+           | PAREN LPAREN ->
                true
            | _ -> false -> (
         match parse_expression tokens LOWEST with

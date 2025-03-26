@@ -445,6 +445,26 @@ let test_boolean () =
   in
   List.iter test_fn cases
 
+let test_operator_precendence_group () =
+  let cases =
+    [
+      ("1+(2+3)+4", "((1+(2+3))+4)");
+      ("(5 + 5) * 2", "((5+5)*2)");
+      ("2 / (5 + 5)", "(2/(5+5))");
+      ("-(5 + 5)", "(-(5+5))");
+      ("!(true == true)", "(!(true==true))");
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let program = input |> tokenize |> parse in
+        check
+          (testable Fmt.string ( = ))
+          ("Parsing:\n" ^ input) expected
+          (String.concat "; " (List.map string_of_statement program.statements))
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -462,4 +482,6 @@ let () =
       ( "Parsing operator precendence",
         [ test_case "Basic" `Quick test_operator_precendence ] );
       ("Parsing boolean", [ test_case "Basic" `Quick test_boolean ]);
+      ( "Parsing operator precendence group",
+        [ test_case "Basic" `Quick test_operator_precendence_group ] );
     ]
