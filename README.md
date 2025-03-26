@@ -6,7 +6,10 @@ This project is an implementation of the Monkey programming language in OCaml, i
 - [x] the Lexer
 - [x] the Parser
     - [x] Let Statements
-    - [ ] Return Statements
+    - [x] Return Statements
+    - [x] Prefix Statements
+    - [x] Infix Statements
+    - [x] Precendence
 - [ ] the Abstract Syntax Tree (AST)
 - [ ] the Internal object system
 - [ ] the Evaluator 
