@@ -36,3 +36,5 @@
 /*.merlin
 
 _opam/
+
+temp*

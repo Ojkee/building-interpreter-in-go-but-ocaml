@@ -1,20 +1,18 @@
 type token = Lexer.token
-type operator_str = string
 
 type expression =
   | Identifier of token
   | IntegerLiteral of token * int
-  | Prefix of token * operator_str * expression
-  | Infix of expression * token * operator_str * expression
+  | Prefix of token * string * expression
+  | Infix of expression * token * string * expression
   | PLACEHOLDER_EXPR
 
 type statement =
   | LetStatement of { ident : expression; value : expression }
   | ReturnStatement of expression
-  | ExpressionStatement of expression (* first token of expression *)
+  | ExpressionStatement of expression
   | PLACEHOLDER_STMT
 
-type node = Statement of statement | Expression of expression
 type program = { statements : statement list; errors : string list }
 
 type precedence =
@@ -30,9 +28,9 @@ let rec string_of_expression = function
   | Identifier (IDENT x) -> x
   | Identifier tok -> "Identifier(" ^ Lexer.string_of_token tok ^ ")"
   | IntegerLiteral (_, x) -> string_of_int x
-  | Prefix (_, op, x) -> op ^ "(" ^ string_of_expression x ^ ")"
+  | Prefix (_, op, x) -> "(" ^ op ^ string_of_expression x ^ ")"
   | Infix (x1, _, op, x2) ->
-      string_of_expression x1 ^ " " ^ op ^ " " ^ string_of_expression x2
+      "(" ^ string_of_expression x1 ^ op ^ string_of_expression x2 ^ ")"
   | PLACEHOLDER_EXPR -> "PLACEHOLDER_EXRP"
 
 let string_of_statement = function
@@ -42,13 +40,8 @@ let string_of_statement = function
           "let " ^ x ^ " = " ^ string_of_expression value ^ ";"
       | _ -> "")
   | ReturnStatement x -> "return " ^ string_of_expression x ^ ";"
-  | ExpressionStatement e ->
-      "ExpressionStatement {" ^ string_of_expression e ^ "}"
+  | ExpressionStatement e -> string_of_expression e
   | PLACEHOLDER_STMT -> "PLACEHOLDER_STMT"
-
-let string_of_node = function
-  | Statement stmt -> "Statement(" ^ string_of_statement stmt ^ ")"
-  | Expression expr -> "Expression(" ^ string_of_expression expr ^ ")"
 
 let string_of_program (prog : program) : string =
   "stetements = [\n"

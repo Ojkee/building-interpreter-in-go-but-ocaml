@@ -3,6 +3,13 @@ open Lib.Lexer
 open Lib.Ast
 open Lib.Parser
 
+(* let print_stmts statements = *)
+(*   statements *)
+(*   |> List.map (fun x -> string_of_statement x) *)
+(*   |> String.concat "\n" *)
+(*   |> (fun x -> "\027[34m[\n" ^ x ^ "\n]\027[0m") *)
+(*   |> print_endline *)
+
 let test_string () =
   let cases =
     [
@@ -211,28 +218,106 @@ let test_prefix_expressions () =
 let test_infix_epressins () =
   let cases =
     [
-      ( "5 + 5",
+      ( "6 + 5",
         {
           statements =
             [
               ExpressionStatement
                 (Infix
-                   ( IntegerLiteral (INT "5", 5),
+                   ( IntegerLiteral (INT "6", 6),
                      OPERATOR PLUS,
                      "+",
                      IntegerLiteral (INT "5", 5) ));
             ];
           errors = [];
         } );
-      ( "5 - 5",
+      ( "6 - 5",
         {
           statements =
             [
               ExpressionStatement
                 (Infix
-                   ( IntegerLiteral (INT "5", 5),
+                   ( IntegerLiteral (INT "6", 6),
                      OPERATOR MINUS,
                      "-",
+                     IntegerLiteral (INT "5", 5) ));
+            ];
+          errors = [];
+        } );
+      ( "6 * 5",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( IntegerLiteral (INT "6", 6),
+                     OPERATOR ASTERISK,
+                     "*",
+                     IntegerLiteral (INT "5", 5) ));
+            ];
+          errors = [];
+        } );
+      ( "6 / 5",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( IntegerLiteral (INT "6", 6),
+                     OPERATOR SLASH,
+                     "/",
+                     IntegerLiteral (INT "5", 5) ));
+            ];
+          errors = [];
+        } );
+      ( "6 > 5",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( IntegerLiteral (INT "6", 6),
+                     OPERATOR GT,
+                     ">",
+                     IntegerLiteral (INT "5", 5) ));
+            ];
+          errors = [];
+        } );
+      ( "6 < 5",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( IntegerLiteral (INT "6", 6),
+                     OPERATOR LT,
+                     "<",
+                     IntegerLiteral (INT "5", 5) ));
+            ];
+          errors = [];
+        } );
+      ( "6 == 5",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( IntegerLiteral (INT "6", 6),
+                     OPERATOR EQ,
+                     "==",
+                     IntegerLiteral (INT "5", 5) ));
+            ];
+          errors = [];
+        } );
+      ( "6 != 5",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( IntegerLiteral (INT "6", 6),
+                     OPERATOR NOT_EQ,
+                     "!=",
                      IntegerLiteral (INT "5", 5) ));
             ];
           errors = [];
@@ -259,6 +344,33 @@ let test_infix_epressins () =
   in
   List.iter test_fn cases
 
+let test_operator_precendence () =
+  let cases =
+    [
+      ("-a*b", "((-a)*b)");
+      ("!-a", "(!(-a))");
+      ("a + b + c", "((a+b)+c)");
+      ("a + b - c", "((a+b)-c)");
+      ("a * b * c", "((a*b)*c)");
+      ("a * b / c", "((a*b)/c)");
+      ("a + b / c", "(a+(b/c))");
+      ("a + b * c + d / e - f", "(((a+(b*c))+(d/e))-f)");
+      ("3 + 4;-5 * 5", "(3+4); ((-5)*5)");
+      ("5 > 4 == 3 < 4", "((5>4)==(3<4))");
+      ("5 < 4 != 3 > 4", "((5<3)!=(3>4))");
+      ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3+(4*5))==((3*1)+(4*5))");
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let program = input |> tokenize |> parse in
+        check
+          (testable Fmt.string ( = ))
+          ("Parsing:\n" ^ input) expected
+          (String.concat "; " (List.map string_of_statement program.statements))
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -273,4 +385,6 @@ let () =
         [ test_case "Basic" `Quick test_prefix_expressions ] );
       ( "Parsing infix expression",
         [ test_case "Basic" `Quick test_infix_epressins ] );
+      ( "Parsing operator precendence",
+        [ test_case "Basic" `Quick test_operator_precendence ] );
     ]
