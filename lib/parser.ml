@@ -9,7 +9,7 @@ let rec skip_till_semicolon = function
 
 let expected_err f s = Printf.sprintf "expected '%s'; got '%s'" f s
 
-let infixable prec op : bool =
+let infixable (prec : precedence) (op : operator) : bool =
   is_infix_operator op && precedence_value prec < operator_precendence_value op
 
 let rec parse_expression (tokens : token list) (prec : precedence) :
@@ -54,8 +54,11 @@ and parse_infix (lexpr : expression) (tokens : token list) (prec : precedence) :
 let parse (tokens : token list) : program =
   let rec advance tokens stmts errs =
     match tokens with
-    | [] -> { statements = List.rev stmts; errors = List.rev errs }
-    | [ EOF ] -> { statements = List.rev stmts; errors = List.rev errs }
+    | [] -> ({ statements = List.rev stmts; errors = List.rev errs }, [])
+    | [ EOF ] ->
+        ({ statements = List.rev stmts; errors = List.rev errs }, [ EOF ])
+    | PAREN RBRACE :: t ->
+        ({ statements = List.rev stmts; errors = List.rev errs }, t)
     | KEYWORD LET :: IDENT x :: OPERATOR ASSIGN :: t ->
         advance
           (skip_till_semicolon t) (* TODO: PARSE BODY *)
@@ -80,6 +83,34 @@ let parse (tokens : token list) : program =
           (skip_till_semicolon t) (* TODO: PARSE BODY *)
           (ReturnStatement PLACEHOLDER_EXPR :: stmts)
           errs
+    | KEYWORD IF :: PAREN LPAREN :: t -> (
+        match parse_expression t LOWEST with
+        | Some (cond, tokens_after_cond) -> (
+            match advance tokens_after_cond [] [] with
+            | ( { statements = cons; errors = cons_errs },
+                tokens_after_consequence ) -> (
+                match tokens_after_consequence with
+                | KEYWORD ELSE :: PAREN LBRACE :: tokens_after_else -> (
+                    match advance tokens_after_else [] [] with
+                    | ( { statements = alter; errors = alter_errs },
+                        tokens_after_alternative ) ->
+                        advance tokens_after_alternative
+                          (ExpressionStatement
+                             (IfExpression
+                                ( KEYWORD IF,
+                                  cond,
+                                  Block (PAREN LBRACE, cons),
+                                  Some (Block (PAREN LBRACE, alter)) ))
+                          :: stmts)
+                          (alter_errs @ errs))
+                | rest ->
+                    advance rest
+                      (ExpressionStatement
+                         (IfExpression
+                            (KEYWORD IF, cond, Block (PAREN LBRACE, cons), None))
+                      :: stmts)
+                      (cons_errs @ errs)))
+        | None -> advance t stmts ("Parse if err" :: errs))
     | h :: t
       when match h with
            | INT _ | IDENT _
@@ -96,4 +127,4 @@ let parse (tokens : token list) : program =
         | None -> advance t stmts ("Parse int/ident/-/! err" :: errs))
     | _ :: t -> advance t stmts errs
   in
-  advance tokens [] []
+  match advance tokens [] [] with prog, _ -> prog

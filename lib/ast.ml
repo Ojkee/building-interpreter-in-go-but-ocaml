@@ -37,12 +37,12 @@ let rec string_of_expression = function
   | Infix (x1, _, op, x2) ->
       "(" ^ string_of_expression x1 ^ op ^ string_of_expression x2 ^ ")"
   | IfExpression (_, cond, Block (_, stmts), Some (Block (_, alt_stmts))) ->
-      "if " ^ string_of_expression cond ^ "{\n" ^ string_of_statements stmts
+      "if " ^ string_of_expression cond ^ " {\n" ^ string_of_statements stmts
       ^ "\n} else {\n"
       ^ string_of_statements alt_stmts
       ^ "\n}"
   | IfExpression (_, cond, Block (_, stmts), None) ->
-      "if " ^ string_of_expression cond ^ "{\n" ^ string_of_statements stmts
+      "if " ^ string_of_expression cond ^ " {\n" ^ string_of_statements stmts
       ^ "\n}"
   | PLACEHOLDER_EXPR -> "PLACEHOLDER_EXRP"
 
