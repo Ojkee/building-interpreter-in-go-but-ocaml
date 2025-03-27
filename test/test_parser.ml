@@ -5,8 +5,7 @@ open Lib.Parser
 
 (* let print_stmts statements = *)
 (*   statements *)
-(*   |> List.map (fun x -> string_of_statement x) *)
-(*   |> String.concat "\n" *)
+(*   |> string_of_statements *)
 (*   |> (fun x -> "\027[34m[\n" ^ x ^ "\n]\027[0m") *)
 (*   |> print_endline *)
 
@@ -465,23 +464,76 @@ let test_operator_precendence_group () =
   in
   List.iter test_fn cases
 
+let test_if_expressions () =
+  let cases =
+    [
+      ( "if (x < y) { x }",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (IfExpression
+                   ( KEYWORD IF,
+                     Infix
+                       ( Identifier (IDENT "x"),
+                         OPERATOR LT,
+                         "<",
+                         Identifier (IDENT "y") ),
+                     Block
+                       ( PAREN LBRACE,
+                         [ ExpressionStatement (Identifier (IDENT "x")) ] ),
+                     None ));
+            ];
+          errors = [];
+        } );
+      ( "if (x < y) { x } else { y }",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (IfExpression
+                   ( KEYWORD IF,
+                     Infix
+                       ( Identifier (IDENT "x"),
+                         OPERATOR LT,
+                         "<",
+                         Identifier (IDENT "y") ),
+                     Block
+                       ( PAREN LBRACE,
+                         [ ExpressionStatement (Identifier (IDENT "x")) ] ),
+                     Some
+                       (Block
+                          ( PAREN LBRACE,
+                            [ ExpressionStatement (Identifier (IDENT "y")) ] ))
+                   ));
+            ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let program = input |> tokenize |> parse in
+        check
+          (testable (Fmt.of_to_string (fun x -> string_of_program x)) ( = ))
+          ("Parsing:\n" ^ input) expected program
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
       ("Testing String", [ test_case "Basic" `Quick test_string ]);
-      ( "Parsing let statement",
-        [ test_case "Basic" `Quick test_let_statement_idents ] );
-      ( "Parsing return statement",
-        [ test_case "Basic" `Quick test_return_statement ] );
-      ( "Parsing identifier expression statements",
+      ("Parsing let", [ test_case "Basic" `Quick test_let_statement_idents ]);
+      ("Parsing return", [ test_case "Basic" `Quick test_return_statement ]);
+      ( "Parsing identifier",
         [ test_case "Basic" `Quick test_identfier_expression ] );
-      ( "Parsing prefix expression",
-        [ test_case "Basic" `Quick test_prefix_expressions ] );
-      ( "Parsing infix expression",
-        [ test_case "Basic" `Quick test_infix_epressins ] );
+      ("Parsing prefix", [ test_case "Basic" `Quick test_prefix_expressions ]);
+      ("Parsing infix", [ test_case "Basic" `Quick test_infix_epressins ]);
       ( "Parsing operator precendence",
         [ test_case "Basic" `Quick test_operator_precendence ] );
       ("Parsing boolean", [ test_case "Basic" `Quick test_boolean ]);
       ( "Parsing operator precendence group",
         [ test_case "Basic" `Quick test_operator_precendence_group ] );
+      ("Parsing if", [ test_case "Basic" `Quick test_if_expressions ]);
     ]

@@ -6,13 +6,16 @@ type expression =
   | Boolean of token * bool
   | Prefix of token * string * expression
   | Infix of expression * token * string * expression
+  | IfExpression of token * expression * block * block option
   | PLACEHOLDER_EXPR
 
-type statement =
+and statement =
   | LetStatement of { ident : expression; value : expression }
   | ReturnStatement of expression
   | ExpressionStatement of expression
   | PLACEHOLDER_STMT
+
+and block = Block of token * statement list
 
 type program = { statements : statement list; errors : string list }
 
@@ -27,6 +30,7 @@ type precedence =
 
 val string_of_expression : expression -> string
 val string_of_statement : statement -> string
+val string_of_statements : statement list -> string
 val string_of_program : program -> string
 val precedence_value : precedence -> int
 val precedence_of_operator : Lexer.operator -> precedence

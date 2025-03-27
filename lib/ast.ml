@@ -6,13 +6,16 @@ type expression =
   | Boolean of token * bool
   | Prefix of token * string * expression
   | Infix of expression * token * string * expression
+  | IfExpression of token * expression * block * block option
   | PLACEHOLDER_EXPR
 
-type statement =
+and statement =
   | LetStatement of { ident : expression; value : expression }
   | ReturnStatement of expression
   | ExpressionStatement of expression
   | PLACEHOLDER_STMT
+
+and block = Block of token * statement list
 
 type program = { statements : statement list; errors : string list }
 
@@ -33,9 +36,17 @@ let rec string_of_expression = function
   | Prefix (_, op, x) -> "(" ^ op ^ string_of_expression x ^ ")"
   | Infix (x1, _, op, x2) ->
       "(" ^ string_of_expression x1 ^ op ^ string_of_expression x2 ^ ")"
+  | IfExpression (_, cond, Block (_, stmts), Some (Block (_, alt_stmts))) ->
+      "if " ^ string_of_expression cond ^ "{\n" ^ string_of_statements stmts
+      ^ "\n} else {\n"
+      ^ string_of_statements alt_stmts
+      ^ "\n}"
+  | IfExpression (_, cond, Block (_, stmts), None) ->
+      "if " ^ string_of_expression cond ^ "{\n" ^ string_of_statements stmts
+      ^ "\n}"
   | PLACEHOLDER_EXPR -> "PLACEHOLDER_EXRP"
 
-let string_of_statement = function
+and string_of_statement = function
   | LetStatement { ident; value } -> (
       match ident with
       | Identifier (Lexer.IDENT x) ->
@@ -44,6 +55,9 @@ let string_of_statement = function
   | ReturnStatement x -> "return " ^ string_of_expression x ^ ";"
   | ExpressionStatement e -> string_of_expression e
   | PLACEHOLDER_STMT -> "PLACEHOLDER_STMT"
+
+and string_of_statements (stmts : statement list) : string =
+  stmts |> List.map string_of_statement |> String.concat "\n"
 
 let string_of_program (prog : program) : string =
   "stetements = [\n"
