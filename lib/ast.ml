@@ -8,6 +8,7 @@ type expression =
   | Infix of expression * token * string * expression
   | IfExpression of token * expression * block * block option
   | FunctionLiteral of token * token list * block
+  | CallExpression of token * expression * expression list
   | PLACEHOLDER_EXPR
 
 and statement =
@@ -47,10 +48,12 @@ let rec string_of_expression = function
       ^ "\n}"
   | FunctionLiteral (_, idents, Block (_, stmts)) ->
       "fn("
-      ^ (idents
-        |> List.map (fun x -> Lexer.string_of_token x)
-        |> String.concat ", ")
+      ^ (idents |> List.map Lexer.string_of_token |> String.concat ", ")
       ^ ") {\n" ^ string_of_statements stmts ^ "\n}"
+  | CallExpression (_, idnet_fn, args) ->
+      string_of_expression idnet_fn
+      ^ ( args |> List.map string_of_expression |> String.concat ", " |> fun x ->
+          "(" ^ x ^ ")" )
   | PLACEHOLDER_EXPR -> "PLACEHOLDER_EXRP"
 
 and string_of_statement = function
@@ -82,16 +85,17 @@ let precedence_value = function
   | PREFIX -> 5
   | CALL -> 6
 
-let precedence_of_operator = function
-  | Lexer.EQ -> EQUALS
-  | Lexer.NOT_EQ -> EQUALS
-  | Lexer.LT -> LESSGREATER
-  | Lexer.GT -> LESSGREATER
-  | Lexer.PLUS -> SUM
-  | Lexer.MINUS -> SUM
-  | Lexer.SLASH -> PRODUCT
-  | Lexer.ASTERISK -> PRODUCT
+let precedence_of_token = function
+  | Lexer.(OPERATOR EQ) -> EQUALS
+  | Lexer.(OPERATOR NOT_EQ) -> EQUALS
+  | Lexer.(OPERATOR LT) -> LESSGREATER
+  | Lexer.(OPERATOR GT) -> LESSGREATER
+  | Lexer.(OPERATOR PLUS) -> SUM
+  | Lexer.(OPERATOR MINUS) -> SUM
+  | Lexer.(OPERATOR SLASH) -> PRODUCT
+  | Lexer.(OPERATOR ASTERISK) -> PRODUCT
+  | Lexer.(PAREN LBRACE) -> CALL
   | _ -> LOWEST
 
-let operator_precendence_value (op : Lexer.operator) : int =
-  op |> precedence_of_operator |> precedence_value
+let token_precendence_value (tok : Lexer.token) : int =
+  tok |> precedence_of_token |> precedence_value

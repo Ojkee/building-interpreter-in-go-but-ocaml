@@ -8,6 +8,7 @@ type expression =
   | Infix of expression * token * string * expression
   | IfExpression of token * expression * block * block option
   | FunctionLiteral of token * token list * block
+  | CallExpression of token * expression * expression list
   | PLACEHOLDER_EXPR
 
 and statement =
@@ -34,5 +35,5 @@ val string_of_statement : statement -> string
 val string_of_statements : statement list -> string
 val string_of_program : program -> string
 val precedence_value : precedence -> int
-val precedence_of_operator : Lexer.operator -> precedence
-val operator_precendence_value : Lexer.operator -> int
+val precedence_of_token : Lexer.token -> precedence
+val token_precendence_value : Lexer.token -> int

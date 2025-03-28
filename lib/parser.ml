@@ -2,15 +2,16 @@ open Lexer
 open Ast
 
 let rec skip_till_semicolon = function
-  | [] -> []
-  | [ EOF ] -> []
+  | [] -> [ EOF ]
+  | [ EOF ] -> [ EOF ]
   | DELIMITER SEMICOLON :: t -> t
   | _ :: t -> skip_till_semicolon t
 
 let expected_err f s = Printf.sprintf "expected '%s'; got '%s'" f s
 
 let infixable (prec : precedence) (op : operator) : bool =
-  is_infix_operator op && precedence_value prec < operator_precendence_value op
+  is_infix_operator op
+  && precedence_value prec < token_precendence_value (OPERATOR op)
 
 let build_if_statement (cond : expression) (cons : statement list)
     (alter : statement list option) : statement =
@@ -30,7 +31,7 @@ let parse_function_parameters (tokens : token list) :
     token list * token list * string list =
   let rec parse_function_parameters' t params errs =
     match t with
-    | [] -> (List.rev params, [], errs)
+    | [] -> (List.rev params, [ EOF ], errs)
     | [ EOF ] -> (List.rev params, [ EOF ], errs)
     | IDENT x :: PAREN RPAREN :: tail ->
         (List.rev (IDENT x :: params), tail, errs)
@@ -70,22 +71,46 @@ and parse_prefix (tokens : token list) : (expression * token list) option =
 and parse_infix (lexpr : expression) (tokens : token list) (prec : precedence) :
     (expression * token list) option =
   match tokens with
-  | OPERATOR op :: rest when infixable prec op -> (
-      let cur_prec = precedence_of_operator op in
+  | (OPERATOR op as op_token) :: rest when infixable prec op -> (
+      let cur_prec = precedence_of_token op_token in
       match parse_expression rest cur_prec with
       | Some (rexpr, rrest) ->
           parse_infix
-            (Infix (lexpr, OPERATOR op, string_of_operator op, rexpr))
+            (Infix (lexpr, op_token, string_of_operator op, rexpr))
             rrest prec
       | None -> Some (lexpr, tokens))
+  | PAREN LPAREN :: rest ->
+      let exprs, after_args, _ (* args_errs *) = parse_call_arguments rest in
+      Some (CallExpression (PAREN LPAREN, lexpr, exprs), after_args)
   | _ -> Some (lexpr, tokens)
+
+and parse_call_arguments (tokens : token list) :
+    expression list * token list * string list =
+  let rec parse_call_arguments' toks exprs errs =
+    match toks with
+    | [] -> (exprs, toks, errs)
+    | [ EOF ] -> (exprs, toks, errs)
+    | PAREN RPAREN :: rest -> (exprs, rest, errs)
+    | DELIMITER COMMA :: rest -> (
+        match parse_expression rest LOWEST with
+        | Some (expr, after_arg) ->
+            parse_call_arguments' after_arg (expr :: exprs) errs
+        | None -> (exprs, toks, "Parse call arguments err" :: errs))
+    | _ -> (
+        match parse_expression toks LOWEST with
+        | Some (expr, after_arg) ->
+            parse_call_arguments' after_arg (expr :: exprs) errs
+        | None -> (exprs, toks, "Parse call arguments err" :: errs))
+  in
+  match parse_call_arguments' tokens [] [] with
+  | exprs, rest, errs -> (List.rev exprs, rest, errs)
 
 let parse (tokens : token list) : program =
   let rec advance tokens stmts errs =
     match tokens with
-    | [] -> ({ statements = List.rev stmts; errors = List.rev errs }, [])
+    | [] -> ({ statements = List.rev stmts; errors = List.rev errs }, [ EOF ])
     | [ EOF ] ->
-        ({ statements = List.rev stmts; errors = List.rev errs }, [ EOF ])
+        ({ statements = List.rev stmts; errors = List.rev errs }, tokens)
     | PAREN RBRACE :: t ->
         ({ statements = List.rev stmts; errors = List.rev errs }, t)
     | KEYWORD LET :: IDENT x :: OPERATOR ASSIGN :: t ->

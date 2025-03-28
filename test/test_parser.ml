@@ -586,6 +586,63 @@ let test_function_literal () =
   in
   List.iter test_fn cases
 
+let test_call () =
+  let cases =
+    [
+      ( "add(1, 2 * 3, 4 + 5);",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (CallExpression
+                   ( PAREN LPAREN,
+                     Identifier (IDENT "add"),
+                     [
+                       IntegerLiteral (INT "1", 1);
+                       Infix
+                         ( IntegerLiteral (INT "2", 2),
+                           OPERATOR ASTERISK,
+                           "*",
+                           IntegerLiteral (INT "3", 3) );
+                       Infix
+                         ( IntegerLiteral (INT "4", 4),
+                           OPERATOR PLUS,
+                           "+",
+                           IntegerLiteral (INT "5", 5) );
+                     ] ));
+            ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let program = input |> tokenize |> parse in
+        check
+          (testable (Fmt.of_to_string (fun x -> string_of_program x)) ( = ))
+          ("Parsing:\n" ^ input) expected program
+  in
+  List.iter test_fn cases
+
+let test_call_string () =
+  let cases =
+    [
+      ("a + add(b * c) + d", "((a+add((b*c)))+d)");
+      ( "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+        "add(a, b, 1, (2*3), (4+5), add(6, (7*8)))" );
+      ("add(a + b + c * d / f + g)", "add((((a+b)+((c*d)/f))+g))");
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let program = input |> tokenize |> parse in
+        check
+          (testable Fmt.string ( = ))
+          ("Parsing:\n" ^ input) expected
+          (String.concat "; " (List.map string_of_statement program.statements))
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -604,4 +661,6 @@ let () =
       ("Parsing if", [ test_case "Basic" `Quick test_if_expressions ]);
       ( "Parsing function literal",
         [ test_case "Basic" `Quick test_function_literal ] );
+      ("Parsing call", [ test_case "Basic" `Quick test_call ]);
+      ("Parsing call string", [ test_case "Basic" `Quick test_call_string ]);
     ]
