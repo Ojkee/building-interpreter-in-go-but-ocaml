@@ -6,5 +6,6 @@ let rec repl () =
   match read_line () with
   | "exit" -> exit 0
   | line ->
-      Lexer.(tokenize line |> string_of_tokens) |> print_endline;
+      line |> Lexer.tokenize |> Parser.parse |> Ast.string_of_program
+      |> print_endline;
       repl ()
