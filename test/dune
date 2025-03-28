@@ -7,3 +7,8 @@
  (name test_parser)
  (modules test_parser)
  (libraries alcotest lib))
+
+(test
+ (name test_evaluator)
+ (modules test_evaluator)
+ (libraries alcotest lib))

@@ -2,4 +2,4 @@
  (name lib)
  (libraries str)
  (flags (:standard -w -32 -w -34 -w -37 -w -69)) ; TODO: REMOVE 
- (modules lexer repl ast parser))
+ (modules lexer repl ast parser object evaluator))
