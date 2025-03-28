@@ -44,18 +44,24 @@ let test_string () =
 let test_let_statement_idents () =
   let cases =
     [
-      ( "let x = 5;\nlet y = 10;\nlet foobar = 838383;",
+      ( "let x = 5;\nlet y = true;\nlet foobar = y;",
         {
           statements =
             [
               LetStatement
-                { ident = Identifier (IDENT "x"); value = PLACEHOLDER_EXPR };
+                {
+                  ident = Identifier (IDENT "x");
+                  value = IntegerLiteral (INT "5", 5);
+                };
               LetStatement
-                { ident = Identifier (IDENT "y"); value = PLACEHOLDER_EXPR };
+                {
+                  ident = Identifier (IDENT "y");
+                  value = Boolean (KEYWORD TRUE, true);
+                };
               LetStatement
                 {
                   ident = Identifier (IDENT "foobar");
-                  value = PLACEHOLDER_EXPR;
+                  value = Identifier (IDENT "y");
                 };
             ];
           errors = [];
@@ -75,26 +81,10 @@ let test_let_statement_idents () =
   in
   let test_fn = function
     | input, expected ->
-        let parsed_program = input |> tokenize |> parse in
-        let idents prog =
-          List.map
-            (function
-              | LetStatement { ident; _ } -> ident
-              | x ->
-                  failwith
-                    (Printf.sprintf "Wrong statement type: %s"
-                       (string_of_statement x)))
-            prog.statements
-        in
+        let program = input |> tokenize |> parse in
         check
-          (testable
-             (Fmt.of_to_string (fun x ->
-                  String.concat "\n" (List.map string_of_expression x)))
-             ( = ))
-          ("Parsing:\n" ^ input) (idents expected) (idents parsed_program);
-        check
-          (testable (Fmt.of_to_string (fun x -> String.concat "\n" x)) ( = ))
-          ("Parsing:\n" ^ input) expected.errors parsed_program.errors
+          (testable (Fmt.of_to_string string_of_program) ( = ))
+          ("Parsing:\n" ^ input) expected program
   in
   List.iter test_fn cases
 
@@ -105,9 +95,9 @@ let test_return_statement () =
         {
           statements =
             [
-              ReturnStatement PLACEHOLDER_EXPR;
-              ReturnStatement PLACEHOLDER_EXPR;
-              ReturnStatement PLACEHOLDER_EXPR;
+              ReturnStatement (IntegerLiteral (INT "5", 5));
+              ReturnStatement (IntegerLiteral (INT "10", 10));
+              ReturnStatement (IntegerLiteral (INT "993322", 993322));
             ];
           errors = [];
         } );
@@ -115,20 +105,10 @@ let test_return_statement () =
   in
   let test_fn = function
     | input, expected ->
-        let parsed_program = input |> tokenize |> parse in
-        let rets prog =
-          List.map
-            (function
-              | ReturnStatement _ -> "return"
-              | _ -> failwith "Wrong statement type")
-            prog.statements
-        in
+        let program = input |> tokenize |> parse in
         check
-          (testable (Fmt.of_to_string (fun x -> String.concat "\n" x)) ( = ))
-          ("Parsing:\n" ^ input) (rets expected) (rets parsed_program);
-        check
-          (testable (Fmt.of_to_string (fun x -> String.concat "\n" x)) ( = ))
-          ("Parsing:\n" ^ input) expected.errors parsed_program.errors
+          (testable (Fmt.of_to_string string_of_program) ( = ))
+          ("Parsing:\n" ^ input) expected program
   in
   List.iter test_fn cases
 
@@ -619,7 +599,7 @@ let test_call () =
     | input, expected ->
         let program = input |> tokenize |> parse in
         check
-          (testable (Fmt.of_to_string (fun x -> string_of_program x)) ( = ))
+          (testable (Fmt.of_to_string string_of_program) ( = ))
           ("Parsing:\n" ^ input) expected program
   in
   List.iter test_fn cases

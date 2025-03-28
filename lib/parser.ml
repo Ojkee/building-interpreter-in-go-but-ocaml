@@ -113,13 +113,16 @@ let parse (tokens : token list) : program =
         ({ statements = List.rev stmts; errors = List.rev errs }, tokens)
     | PAREN RBRACE :: t ->
         ({ statements = List.rev stmts; errors = List.rev errs }, t)
-    | KEYWORD LET :: IDENT x :: OPERATOR ASSIGN :: t ->
-        advance
-          (skip_till_semicolon t) (* TODO: PARSE BODY *)
-          (LetStatement
-             { ident = Identifier (IDENT x); value = PLACEHOLDER_EXPR }
-          :: stmts)
-          errs
+    | KEYWORD LET :: IDENT x :: OPERATOR ASSIGN :: t -> (
+        match parse_expression t LOWEST with
+        | Some (expr, after_exrp) ->
+            advance after_exrp
+              (LetStatement { ident = Identifier (IDENT x); value = expr }
+              :: stmts)
+              errs
+        | None ->
+            advance (skip_till_semicolon t) stmts
+              ("Parsing let body err" :: errs))
     | KEYWORD LET :: h1 :: h2 :: _ -> (
         match (h1, h2) with
         | IDENT _, h2 ->
@@ -132,11 +135,13 @@ let parse (tokens : token list) : program =
               (skip_till_semicolon tokens)
               stmts
               (expected_err "IDENT" (string_of_token h1) :: errs))
-    | KEYWORD RETURN :: t ->
-        advance
-          (skip_till_semicolon t) (* TODO: PARSE BODY *)
-          (ReturnStatement PLACEHOLDER_EXPR :: stmts)
-          errs
+    | KEYWORD RETURN :: t -> (
+        match parse_expression t LOWEST with
+        | Some (expr, after_exrp) ->
+            advance after_exrp (ReturnStatement expr :: stmts) errs
+        | None ->
+            advance (skip_till_semicolon t) stmts
+              ("Parsing return body err" :: errs))
     | h :: t
       when match h with
            | INT _ | IDENT _
