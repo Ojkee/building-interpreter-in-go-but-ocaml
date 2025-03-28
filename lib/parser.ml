@@ -12,6 +12,35 @@ let expected_err f s = Printf.sprintf "expected '%s'; got '%s'" f s
 let infixable (prec : precedence) (op : operator) : bool =
   is_infix_operator op && precedence_value prec < operator_precendence_value op
 
+let build_if_statement (cond : expression) (cons : statement list)
+    (alter : statement list option) : statement =
+  match alter with
+  | Some alt_stmts ->
+      ExpressionStatement
+        (IfExpression
+           ( KEYWORD IF,
+             cond,
+             Block (PAREN LBRACE, cons),
+             Some (Block (PAREN LBRACE, alt_stmts)) ))
+  | None ->
+      ExpressionStatement
+        (IfExpression (KEYWORD IF, cond, Block (PAREN LBRACE, cons), None))
+
+let parse_function_parameters (tokens : token list) :
+    token list * token list * string list =
+  let rec parse_function_parameters' t params errs =
+    match t with
+    | [] -> (List.rev params, [], errs)
+    | [ EOF ] -> (List.rev params, [ EOF ], errs)
+    | IDENT x :: PAREN RPAREN :: tail ->
+        (List.rev (IDENT x :: params), tail, errs)
+    | IDENT x :: DELIMITER COMMA :: (IDENT _ :: _ as tail) ->
+        parse_function_parameters' tail (IDENT x :: params) errs
+    | PAREN RPAREN :: tail -> (List.rev params, tail, errs)
+    | _ -> (List.rev params, t, "Parsing function parameters err" :: errs)
+  in
+  parse_function_parameters' tokens [] []
+
 let rec parse_expression (tokens : token list) (prec : precedence) :
     (expression * token list) option =
   match parse_prefix tokens with
@@ -83,34 +112,6 @@ let parse (tokens : token list) : program =
           (skip_till_semicolon t) (* TODO: PARSE BODY *)
           (ReturnStatement PLACEHOLDER_EXPR :: stmts)
           errs
-    | KEYWORD IF :: PAREN LPAREN :: t -> (
-        match parse_expression t LOWEST with
-        | Some (cond, tokens_after_cond) -> (
-            match advance tokens_after_cond [] [] with
-            | ( { statements = cons; errors = cons_errs },
-                tokens_after_consequence ) -> (
-                match tokens_after_consequence with
-                | KEYWORD ELSE :: PAREN LBRACE :: tokens_after_else -> (
-                    match advance tokens_after_else [] [] with
-                    | ( { statements = alter; errors = alter_errs },
-                        tokens_after_alternative ) ->
-                        advance tokens_after_alternative
-                          (ExpressionStatement
-                             (IfExpression
-                                ( KEYWORD IF,
-                                  cond,
-                                  Block (PAREN LBRACE, cons),
-                                  Some (Block (PAREN LBRACE, alter)) ))
-                          :: stmts)
-                          (alter_errs @ errs))
-                | rest ->
-                    advance rest
-                      (ExpressionStatement
-                         (IfExpression
-                            (KEYWORD IF, cond, Block (PAREN LBRACE, cons), None))
-                      :: stmts)
-                      (cons_errs @ errs)))
-        | None -> advance t stmts ("Parse if err" :: errs))
     | h :: t
       when match h with
            | INT _ | IDENT _
@@ -125,6 +126,42 @@ let parse (tokens : token list) : program =
         | Some (expr, rest) ->
             advance rest (ExpressionStatement expr :: stmts) errs
         | None -> advance t stmts ("Parse int/ident/-/! err" :: errs))
+    | KEYWORD IF :: PAREN LPAREN :: t -> (
+        match parse_expression t LOWEST with
+        | Some (cond, tokens_after_cond) -> (
+            match advance tokens_after_cond [] [] with
+            | ( { statements = cons; errors = cons_errs },
+                tokens_after_consequence ) -> (
+                match tokens_after_consequence with
+                | KEYWORD ELSE :: PAREN LBRACE :: tokens_after_else -> (
+                    match advance tokens_after_else [] [] with
+                    | ( { statements = alter; errors = alter_errs },
+                        tokens_after_alternative ) ->
+                        advance tokens_after_alternative
+                          (build_if_statement cond cons (Some alter) :: stmts)
+                          (alter_errs @ errs))
+                | rest ->
+                    advance rest
+                      (build_if_statement cond cons None :: stmts)
+                      (cons_errs @ errs)))
+        | None -> advance t stmts ("Parse if err" :: errs))
+    | KEYWORD IF :: h :: t ->
+        advance t stmts (expected_err "'('" (string_of_token h) :: errs)
+    | KEYWORD FUNCTION :: PAREN LPAREN :: t -> (
+        let params, after_params, param_errs = parse_function_parameters t in
+        match after_params with
+        | PAREN LBRACE :: rest -> (
+            match advance rest [] [] with
+            | { statements = body_stmts; errors = body_errs }, after_body ->
+                advance after_body
+                  (ExpressionStatement
+                     (FunctionLiteral
+                        ( KEYWORD FUNCTION,
+                          params,
+                          Block (PAREN LBRACE, body_stmts) ))
+                  :: stmts)
+                  (param_errs @ body_errs @ errs))
+        | rest -> advance rest stmts errs)
     | _ :: t -> advance t stmts errs
   in
   match advance tokens [] [] with prog, _ -> prog

@@ -57,7 +57,7 @@ let string_of_parenthesis = function
 let string_of_token = function
   | ILLEGAL x -> "ILLEGAL(" ^ x ^ ")"
   | EOF -> "EOF"
-  | IDENT x -> "IDENT(" ^ x ^ ")"
+  | IDENT x -> x
   | INT i -> i
   | FLOAT f -> f
   | OPERATOR op -> string_of_operator op

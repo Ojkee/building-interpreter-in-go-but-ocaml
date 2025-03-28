@@ -520,6 +520,72 @@ let test_if_expressions () =
   in
   List.iter test_fn cases
 
+let test_function_literal () =
+  let cases =
+    [
+      ( "fn(x, y) { x + y; }",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (FunctionLiteral
+                   ( KEYWORD FUNCTION,
+                     [ IDENT "x"; IDENT "y" ],
+                     Block
+                       ( PAREN LBRACE,
+                         [
+                           ExpressionStatement
+                             (Infix
+                                ( Identifier (IDENT "x"),
+                                  OPERATOR PLUS,
+                                  "+",
+                                  Identifier (IDENT "y") ));
+                         ] ) ));
+            ];
+          errors = [];
+        } );
+      ( "fn() {}",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (FunctionLiteral (KEYWORD FUNCTION, [], Block (PAREN LBRACE, [])));
+            ];
+          errors = [];
+        } );
+      ( "fn(x) {}",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (FunctionLiteral
+                   (KEYWORD FUNCTION, [ IDENT "x" ], Block (PAREN LBRACE, [])));
+            ];
+          errors = [];
+        } );
+      ( "fn(x, y, z) {}",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (FunctionLiteral
+                   ( KEYWORD FUNCTION,
+                     [ IDENT "x"; IDENT "y"; IDENT "z" ],
+                     Block (PAREN LBRACE, []) ));
+            ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let program = input |> tokenize |> parse in
+        check
+          (testable (Fmt.of_to_string (fun x -> string_of_program x)) ( = ))
+          ("Parsing:\n" ^ input) expected program
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -536,4 +602,6 @@ let () =
       ( "Parsing operator precendence group",
         [ test_case "Basic" `Quick test_operator_precendence_group ] );
       ("Parsing if", [ test_case "Basic" `Quick test_if_expressions ]);
+      ( "Parsing function literal",
+        [ test_case "Basic" `Quick test_function_literal ] );
     ]

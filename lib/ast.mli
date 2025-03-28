@@ -7,6 +7,7 @@ type expression =
   | Prefix of token * string * expression
   | Infix of expression * token * string * expression
   | IfExpression of token * expression * block * block option
+  | FunctionLiteral of token * token list * block
   | PLACEHOLDER_EXPR
 
 and statement =

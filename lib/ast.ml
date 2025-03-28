@@ -7,6 +7,7 @@ type expression =
   | Prefix of token * string * expression
   | Infix of expression * token * string * expression
   | IfExpression of token * expression * block * block option
+  | FunctionLiteral of token * token list * block
   | PLACEHOLDER_EXPR
 
 and statement =
@@ -44,6 +45,12 @@ let rec string_of_expression = function
   | IfExpression (_, cond, Block (_, stmts), None) ->
       "if " ^ string_of_expression cond ^ " {\n" ^ string_of_statements stmts
       ^ "\n}"
+  | FunctionLiteral (_, idents, Block (_, stmts)) ->
+      "fn("
+      ^ (idents
+        |> List.map (fun x -> Lexer.string_of_token x)
+        |> String.concat ", ")
+      ^ ") {\n" ^ string_of_statements stmts ^ "\n}"
   | PLACEHOLDER_EXPR -> "PLACEHOLDER_EXRP"
 
 and string_of_statement = function
