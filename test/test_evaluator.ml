@@ -107,6 +107,25 @@ let test_eval_if_else_expression () =
   in
   List.iter test_fn cases
 
+let test_eval_return_statements () =
+  let cases =
+    [
+      ("return 10;", IntegerObj 10);
+      ("return 10; 9;", IntegerObj 10);
+      ("return 2 * 5; 9;", IntegerObj 10);
+      ("9; return 2 * 5; 9;", IntegerObj 10);
+      ("if (10 > 1) { if (10 > 1) { return 10; } return 1; }", IntegerObj 10);
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object_deb) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -118,4 +137,6 @@ let () =
         [ test_case "Basic" `Quick test_eval_bang_operator ] );
       ( "Testing eval if else expression",
         [ test_case "Basic" `Quick test_eval_if_else_expression ] );
+      ( "Testing eval return statements",
+        [ test_case "Basic" `Quick test_eval_return_statements ] );
     ]

@@ -28,4 +28,5 @@ This project is an implementation of the Monkey programming language in OCaml, i
     - [x] Prefix expressions
     - [x] Infix expressions
     - [x] Conditionals
-    - [ ] Return Statements
+    - [x] Return Statements
+    - [ ] Error handling
