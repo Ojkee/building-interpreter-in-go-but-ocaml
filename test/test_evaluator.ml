@@ -126,6 +126,29 @@ let test_eval_return_statements () =
   in
   List.iter test_fn cases
 
+let test_eval_error_handling () =
+  let cases =
+    [
+      ("5 + true", ErrorObj "type mismatch: INTEGER + BOOLEAN");
+      ("5 + true; 5;", ErrorObj "type mismatch: INTEGER + BOOLEAN");
+      ("-true", ErrorObj "unknown operator: -BOOLEAN");
+      ("true + false;", ErrorObj "unknown operator: BOOLEAN + BOOLEAN");
+      ("5; true + false; 5; ", ErrorObj "unknown operator: BOOLEAN + BOOLEAN");
+      ( "if (10 > 1) { true + false; }",
+        ErrorObj "unknown operator: BOOLEAN + BOOLEAN" );
+      ( "if (10 > 1) { if ( 10 > 1 ) { true + false; } return 1; }",
+        ErrorObj "unknown operator: BOOLEAN + BOOLEAN" );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object_deb) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -139,4 +162,6 @@ let () =
         [ test_case "Basic" `Quick test_eval_if_else_expression ] );
       ( "Testing eval return statements",
         [ test_case "Basic" `Quick test_eval_return_statements ] );
+      ( "Testing eval error handling",
+        [ test_case "Basic" `Quick test_eval_error_handling ] );
     ]

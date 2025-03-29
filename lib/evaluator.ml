@@ -4,6 +4,13 @@ open Object
 
 type node_type = [ `Prog of program | `Stmt of statement | `Expr of expression ]
 
+let same_type_obj (a : data_obj) (b : data_obj) : bool =
+  match (a, b) with
+  | IntegerObj _, IntegerObj _ | BooleanObj _, BooleanObj _ -> true
+  | _, _ -> false
+
+let new_error fmt = Printf.ksprintf (fun msg -> ErrorObj msg) fmt
+
 let rec eval (node : node_type) : data_obj =
   match node with
   | `Prog { statements = _; errors = errs } when List.length errs > 0 ->
@@ -17,31 +24,41 @@ let rec eval (node : node_type) : data_obj =
   | `Expr (Boolean (_, value)) -> BooleanObj value
   | `Expr (Prefix (OPERATOR BANG, _, value)) -> (
       match eval (`Expr value) with
+      | ErrorObj _ as err -> err
       | BooleanObj x -> BooleanObj (not x)
       | NullObj -> BooleanObj true
       | _ -> BooleanObj false)
   | `Expr (Prefix (OPERATOR MINUS, _, value)) -> (
       match eval (`Expr value) with
+      | ErrorObj _ as err -> err
       | IntegerObj x -> IntegerObj (-x)
-      | _ -> NullObj)
+      | obj -> new_error "unknown operator: -%s" (type_string_of_object obj))
   | `Expr (Infix (left, op_tok, _, right)) -> (
       match (eval (`Expr left), op_tok, eval (`Expr right)) with
+      | (ErrorObj _ as err_left), _, _ -> err_left
+      | _, _, (ErrorObj _ as err_right) -> err_right
+      | x, OPERATOR op, y when not (same_type_obj x y) ->
+          new_error "type mismatch: %s %s %s" (type_string_of_object x)
+            (string_of_operator op) (type_string_of_object y)
       | IntegerObj x, OPERATOR PLUS, IntegerObj y -> IntegerObj (x + y)
       | IntegerObj x, OPERATOR MINUS, IntegerObj y -> IntegerObj (x - y)
       | IntegerObj x, OPERATOR ASTERISK, IntegerObj y -> IntegerObj (x * y)
-      | IntegerObj x, OPERATOR SLASH, IntegerObj y when y <> 0 ->
-          IntegerObj (x / y)
+      | IntegerObj x, OPERATOR SLASH, IntegerObj y when y = 0 ->
+          new_error "can't devide by 0 (%d / 0)" x
+      | IntegerObj x, OPERATOR SLASH, IntegerObj y -> IntegerObj (x / y)
       | IntegerObj x, OPERATOR EQ, IntegerObj y -> BooleanObj (x == y)
       | IntegerObj x, OPERATOR NOT_EQ, IntegerObj y -> BooleanObj (x != y)
       | IntegerObj x, OPERATOR GT, IntegerObj y -> BooleanObj (x > y)
       | IntegerObj x, OPERATOR LT, IntegerObj y -> BooleanObj (x < y)
       | BooleanObj x, OPERATOR EQ, BooleanObj y -> BooleanObj (x == y)
       | BooleanObj x, OPERATOR NOT_EQ, BooleanObj y -> BooleanObj (x != y)
-      | _, _, _ -> NullObj)
+      | x, op, y ->
+          new_error "unknown operator: %s %s %s" (type_string_of_object x)
+            (string_of_token op) (type_string_of_object y))
   | `Expr (IfExpression (_, cond, Block (_, cons), alter_block)) -> (
       match (eval (`Expr cond), alter_block) with
-      | BooleanObj true, _ -> eval_block_statements cons
-      | IntegerObj _, _ -> eval_block_statements cons
+      | (ErrorObj _ as err), _ -> err
+      | BooleanObj true, _ | IntegerObj _, _ -> eval_block_statements cons
       | BooleanObj false, Some (Block (_, alter)) -> eval_block_statements alter
       | _ -> NullObj)
   | `Expr expr ->
@@ -57,6 +74,7 @@ and eval_block_statements (stmts : statement list) : data_obj =
   | h :: t -> (
       match eval (`Stmt h) with
       | ReturnValueObj x -> x
+      | ErrorObj _ as err_obj -> err_obj
       | _ -> eval_block_statements t)
 
 and eval_program (prog : program) : data_obj =
@@ -69,11 +87,8 @@ and eval_program (prog : program) : data_obj =
   | { statements = h :: t; errors = err } -> (
       match eval (`Stmt h) with
       | ReturnValueObj x -> x
+      | ErrorObj _ as err_obj -> err_obj
       | _ -> eval_program { statements = t; errors = err })
-
-and unpack_return_object = function
-  | ReturnValueObj x -> x
-  | not_ret_obj -> not_ret_obj
 
 let evaluate (prog : program) : data_obj =
   eval (`Prog prog) |> unpack_return_object
