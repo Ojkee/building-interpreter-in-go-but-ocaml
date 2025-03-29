@@ -12,12 +12,12 @@ This project is an implementation of the Monkey programming language in OCaml, i
     - [x] Precendence
     - [x] Booleans
     - [x] Precendence Groups
-    - [x] If expressions
+    - [x] If Expressions
     - [x] Function Literals
-    - [x] Call expressions
+    - [x] Call Expressions
     - [x] Removing TODOs
 - [x] the Abstract Syntax Tree (AST)
-- [x] the Internal object system
+- [x] the Internal Object System
     - [x] Integeres
     - [x] Booleans
     - [x] Null
@@ -25,8 +25,9 @@ This project is an implementation of the Monkey programming language in OCaml, i
     - [x] Integeres
     - [x] Booleans
     - [x] Null
-    - [x] Prefix expressions
-    - [x] Infix expressions
+    - [x] Prefix Expressions
+    - [x] Infix Expressions
     - [x] Conditionals
     - [x] Return Statements
-    - [ ] Error handling
+    - [x] Error Handling
+    - [ ] Bindings & the Enviroment

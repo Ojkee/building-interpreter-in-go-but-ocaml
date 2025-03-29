@@ -138,6 +138,25 @@ let test_eval_error_handling () =
         ErrorObj "unknown operator: BOOLEAN + BOOLEAN" );
       ( "if (10 > 1) { if ( 10 > 1 ) { true + false; } return 1; }",
         ErrorObj "unknown operator: BOOLEAN + BOOLEAN" );
+      ("foobar", ErrorObj "identifier not found: foobar");
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object_deb) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases
+
+let test_eval_let_statements () =
+  let cases =
+    [
+      ("let a = 5; a;", IntegerObj 5);
+      ("let a = 5 * 5; a;", IntegerObj 25);
+      ("let a = 5; let b = a; b;", IntegerObj 5);
+      ("let a = 5; let b = a; let c = a + b + 5; c;", IntegerObj 15);
     ]
   in
   let test_fn = function
@@ -164,4 +183,6 @@ let () =
         [ test_case "Basic" `Quick test_eval_return_statements ] );
       ( "Testing eval error handling",
         [ test_case "Basic" `Quick test_eval_error_handling ] );
+      ( "Testing eval let statements",
+        [ test_case "Basic" `Quick test_eval_let_statements ] );
     ]

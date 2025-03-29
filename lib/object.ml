@@ -6,6 +6,8 @@ type data_obj =
   | ErrorObj of string
   | PLACEHOLDER_OBJ
 
+type enviroment = (string, data_obj) Hashtbl.t
+
 let rec string_of_object = function
   | IntegerObj x -> string_of_int x
   | BooleanObj x -> string_of_bool x
@@ -33,3 +35,7 @@ let rec type_string_of_object = function
 let unpack_return_object = function
   | ReturnValueObj x -> x
   | not_ret_obj -> not_ret_obj
+
+let new_enviroment () : enviroment =
+  let env : enviroment = Hashtbl.create 10 in
+  env

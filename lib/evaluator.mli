@@ -1,4 +1,4 @@
 open Ast
 open Object
 
-val evaluate : program -> data_obj
+val evaluate : ?env:enviroment -> program -> data_obj
