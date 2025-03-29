@@ -17,5 +17,15 @@ This project is an implementation of the Monkey programming language in OCaml, i
     - [x] Call expressions
     - [x] Removing TODOs
 - [x] the Abstract Syntax Tree (AST)
-- [ ] the Internal object system
+- [x] the Internal object system
+    - [x] Integeres
+    - [x] Booleans
+    - [x] Null
 - [ ] the Evaluator 
+    - [x] Integeres
+    - [x] Booleans
+    - [x] Null
+    - [x] Prefix expressions
+    - [x] Infix expressions
+    - [x] Conditionals
+    - [ ] Return Statements

@@ -14,6 +14,7 @@ let rec eval (node : node_type) : data_obj =
   | `Expr (Prefix (OPERATOR BANG, _, value)) -> (
       match eval (`Expr value) with
       | BooleanObj x -> BooleanObj (not x)
+      (* | IntegerObj x when x <> 0 -> BooleanObj true *)
       | NullObj -> BooleanObj true
       | _ -> BooleanObj false)
   | `Expr (Prefix (OPERATOR MINUS, _, value)) -> (
@@ -34,6 +35,12 @@ let rec eval (node : node_type) : data_obj =
       | BooleanObj x, OPERATOR EQ, BooleanObj y -> BooleanObj (x == y)
       | BooleanObj x, OPERATOR NOT_EQ, BooleanObj y -> BooleanObj (x != y)
       | _, _, _ -> NullObj)
+  | `Expr (IfExpression (_, cond, Block (_, cons), alter_block)) -> (
+      match (eval (`Expr cond), alter_block) with
+      | BooleanObj true, _ -> eval_statements cons
+      | IntegerObj _, _ -> eval_statements cons
+      | BooleanObj false, Some (Block (_, alter)) -> eval_statements alter
+      | _ -> NullObj)
   | `Expr _ -> failwith "Unimplemented expression type in eval"
 
 and eval_statements (stmts : statement list) : data_obj =

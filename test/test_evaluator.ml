@@ -86,6 +86,27 @@ let test_eval_bang_operator () =
   in
   List.iter test_fn cases
 
+let test_eval_if_else_expression () =
+  let cases =
+    [
+      ("if (true) { 10 }", IntegerObj 10);
+      ("if (false) { 10 }", NullObj);
+      ("if (1) { 10 } ", IntegerObj 10);
+      ("if (1 < 2) { 10 } ", IntegerObj 10);
+      ("if (1 > 2) { 10 } ", NullObj);
+      ("if (1 > 2) { 10 } else { 20 }", IntegerObj 20);
+      ("if (1 < 2) { 10 } else { 20 }", IntegerObj 10);
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -95,4 +116,6 @@ let () =
         [ test_case "Basic" `Quick test_eval_boolean_expression ] );
       ( "Testing eval bang operator",
         [ test_case "Basic" `Quick test_eval_bang_operator ] );
+      ( "Testing eval if else expression",
+        [ test_case "Basic" `Quick test_eval_if_else_expression ] );
     ]
