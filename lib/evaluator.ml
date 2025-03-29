@@ -22,17 +22,20 @@ let rec eval (node : node_type) : data_obj =
   | `Stmt _ -> failwith "Unimplemented statement type in eval"
   | `Expr (IntegerLiteral (_, value)) -> IntegerObj value
   | `Expr (Boolean (_, value)) -> BooleanObj value
-  | `Expr (Prefix (OPERATOR BANG, _, value)) -> (
+  | `Expr (Prefix (prefix_tok, _, value)) -> (
       match eval (`Expr value) with
       | ErrorObj _ as err -> err
-      | BooleanObj x -> BooleanObj (not x)
-      | NullObj -> BooleanObj true
-      | _ -> BooleanObj false)
-  | `Expr (Prefix (OPERATOR MINUS, _, value)) -> (
-      match eval (`Expr value) with
-      | ErrorObj _ as err -> err
-      | IntegerObj x -> IntegerObj (-x)
-      | obj -> new_error "unknown operator: -%s" (type_string_of_object obj))
+      | eval_value -> (
+          match (prefix_tok, eval_value) with
+          | OPERATOR BANG, BooleanObj x -> BooleanObj (not x)
+          | OPERATOR BANG, NullObj -> BooleanObj true
+          | OPERATOR BANG, _ -> BooleanObj false
+          | OPERATOR MINUS, IntegerObj x -> IntegerObj (-x)
+          | OPERATOR MINUS, obj ->
+              new_error "unknown operator: -%s" (type_string_of_object obj)
+          | op, obj ->
+              new_error "unknown operator %s%s" (string_of_token op)
+                (type_string_of_object obj)))
   | `Expr (Infix (left, op_tok, _, right)) -> (
       match (eval (`Expr left), op_tok, eval (`Expr right)) with
       | (ErrorObj _ as err_left), _, _ -> err_left
@@ -78,17 +81,7 @@ and eval_block_statements (stmts : statement list) : data_obj =
       | _ -> eval_block_statements t)
 
 and eval_program (prog : program) : data_obj =
-  match prog with
-  | { statements = []; _ } -> NullObj
-  | { statements = ReturnStatement expr :: _; _ } ->
-      ReturnValueObj (eval (`Expr expr))
-  | { statements = [ ExpressionStatement last_expr ]; _ } ->
-      eval (`Expr last_expr)
-  | { statements = h :: t; errors = err } -> (
-      match eval (`Stmt h) with
-      | ReturnValueObj x -> x
-      | ErrorObj _ as err_obj -> err_obj
-      | _ -> eval_program { statements = t; errors = err })
+  eval_block_statements prog.statements
 
 let evaluate (prog : program) : data_obj =
   eval (`Prog prog) |> unpack_return_object
