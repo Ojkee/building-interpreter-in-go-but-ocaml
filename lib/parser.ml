@@ -13,19 +13,16 @@ let infixable (prec : precedence) (op : operator) : bool =
   is_infix_operator op
   && precedence_value prec < token_precendence_value (OPERATOR op)
 
-let build_if_statement (cond : expression) (cons : statement list)
-    (alter : statement list option) : statement =
+let build_if_expression (cond : expression) (cons : statement list)
+    (alter : statement list option) : expression =
   match alter with
   | Some alt_stmts ->
-      ExpressionStatement
-        (IfExpression
-           ( KEYWORD IF,
-             cond,
-             Block (PAREN LBRACE, cons),
-             Some (Block (PAREN LBRACE, alt_stmts)) ))
-  | None ->
-      ExpressionStatement
-        (IfExpression (KEYWORD IF, cond, Block (PAREN LBRACE, cons), None))
+      IfExpression
+        ( KEYWORD IF,
+          cond,
+          Block (PAREN LBRACE, cons),
+          Some (Block (PAREN LBRACE, alt_stmts)) )
+  | None -> IfExpression (KEYWORD IF, cond, Block (PAREN LBRACE, cons), None)
 
 let parse_function_parameters (tokens : token list) :
     token list * token list * string list =
@@ -113,6 +110,41 @@ let parse (tokens : token list) : program =
         ({ statements = List.rev stmts; errors = List.rev errs }, tokens)
     | PAREN RBRACE :: t ->
         ({ statements = List.rev stmts; errors = List.rev errs }, t)
+    | KEYWORD LET
+      :: IDENT x
+      :: OPERATOR ASSIGN
+      :: KEYWORD IF
+      :: PAREN LPAREN
+      :: t -> (
+        match parse_expression t LOWEST with
+        | Some (cond, tokens_after_cond) -> (
+            match advance tokens_after_cond [] [] with
+            | ( { statements = cons; errors = cons_errs },
+                tokens_after_consequence ) -> (
+                match tokens_after_consequence with
+                | KEYWORD ELSE :: PAREN LBRACE :: tokens_after_else -> (
+                    match advance tokens_after_else [] [] with
+                    | ( { statements = alter; errors = alter_errs },
+                        tokens_after_alternative ) ->
+                        advance tokens_after_alternative
+                          (LetStatement
+                             {
+                               ident = Identifier (IDENT x);
+                               value =
+                                 build_if_expression cond cons (Some alter);
+                             }
+                          :: stmts)
+                          (alter_errs @ errs))
+                | rest ->
+                    advance rest
+                      (LetStatement
+                         {
+                           ident = Identifier (IDENT x);
+                           value = build_if_expression cond cons None;
+                         }
+                      :: stmts)
+                      (cons_errs @ errs)))
+        | None -> advance t stmts ("Parse if err" :: errs))
     | KEYWORD LET :: IDENT x :: OPERATOR ASSIGN :: t -> (
         match parse_expression t LOWEST with
         | Some (expr, after_exrp) ->
@@ -168,11 +200,14 @@ let parse (tokens : token list) : program =
                     | ( { statements = alter; errors = alter_errs },
                         tokens_after_alternative ) ->
                         advance tokens_after_alternative
-                          (build_if_statement cond cons (Some alter) :: stmts)
+                          (ExpressionStatement
+                             (build_if_expression cond cons (Some alter))
+                          :: stmts)
                           (alter_errs @ errs))
                 | rest ->
                     advance rest
-                      (build_if_statement cond cons None :: stmts)
+                      (ExpressionStatement (build_if_expression cond cons None)
+                      :: stmts)
                       (cons_errs @ errs)))
         | None -> advance t stmts ("Parse if err" :: errs))
     | KEYWORD IF :: h :: t ->

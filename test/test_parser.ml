@@ -623,6 +623,52 @@ let test_call_string () =
   in
   List.iter test_fn cases
 
+let test_parser_additional () =
+  let cases =
+    [
+      ( "let x = if (10 > 4) { 10; } else { 4; } ;",
+        {
+          statements =
+            [
+              LetStatement
+                {
+                  ident = Identifier (IDENT "x");
+                  value =
+                    IfExpression
+                      ( KEYWORD IF,
+                        Infix
+                          ( IntegerLiteral (INT "10", 10),
+                            OPERATOR GT,
+                            ">",
+                            IntegerLiteral (INT "4", 4) ),
+                        Block
+                          ( PAREN LBRACE,
+                            [
+                              ExpressionStatement
+                                (IntegerLiteral (INT "10", 10));
+                            ] ),
+                        Some
+                          (Block
+                             ( PAREN LBRACE,
+                               [
+                                 ExpressionStatement
+                                   (IntegerLiteral (INT "4", 4));
+                               ] )) );
+                };
+            ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let program = input |> tokenize |> parse in
+        check
+          (testable (Fmt.of_to_string string_of_program) ( = ))
+          ("Parsing:\n" ^ input) expected program
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -643,4 +689,6 @@ let () =
         [ test_case "Basic" `Quick test_function_literal ] );
       ("Parsing call", [ test_case "Basic" `Quick test_call ]);
       ("Parsing call string", [ test_case "Basic" `Quick test_call_string ]);
+      ( "Parsing additional tests",
+        [ test_case "Basic" `Quick test_parser_additional ] );
     ]
