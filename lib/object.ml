@@ -1,12 +1,19 @@
+open Ast
+
 type data_obj =
   | IntegerObj of int
   | BooleanObj of bool
   | NullObj
   | ReturnValueObj of data_obj
   | ErrorObj of string
+  | FunctionObj of expression list * statement list * enviroment
   | PLACEHOLDER_OBJ
 
-type enviroment = (string, data_obj) Hashtbl.t
+and enviroment = (string, data_obj) Hashtbl.t
+
+let new_enviroment () : enviroment =
+  let env : enviroment = Hashtbl.create 10 in
+  env
 
 let rec string_of_object = function
   | IntegerObj x -> string_of_int x
@@ -14,6 +21,10 @@ let rec string_of_object = function
   | NullObj -> "NULL"
   | ReturnValueObj x -> string_of_object x
   | ErrorObj x -> "Err:\t" ^ x
+  | FunctionObj (idents, stmts, _) ->
+      "fn("
+      ^ (List.map string_of_expression idents |> String.concat ", ")
+      ^ ") {\n" ^ string_of_statements stmts ^ "\n}"
   | PLACEHOLDER_OBJ -> "PLACEHOLDER_OBJ"
 
 let rec string_of_object_deb = function
@@ -22,6 +33,10 @@ let rec string_of_object_deb = function
   | NullObj -> "NULL"
   | ReturnValueObj x -> "ret(" ^ string_of_object_deb x ^ ")"
   | ErrorObj x -> "err(" ^ x ^ ")"
+  | FunctionObj (idents, stmts, _) ->
+      "function(fn("
+      ^ (List.map string_of_expression idents |> String.concat ", ")
+      ^ ") {\n" ^ string_of_statements stmts ^ "\n})"
   | PLACEHOLDER_OBJ -> "PLACEHOLDER_OBJ"
 
 let rec type_string_of_object = function
@@ -30,12 +45,9 @@ let rec type_string_of_object = function
   | NullObj -> "NULL"
   | ReturnValueObj x -> "(RETURN (" ^ type_string_of_object x ^ ")"
   | ErrorObj x -> "ERROR(" ^ x ^ ")"
+  | FunctionObj _ -> "FUNCTION"
   | PLACEHOLDER_OBJ -> "PLACEHOLDER"
 
 let unpack_return_object = function
   | ReturnValueObj x -> x
   | not_ret_obj -> not_ret_obj
-
-let new_enviroment () : enviroment =
-  let env : enviroment = Hashtbl.create 10 in
-  env

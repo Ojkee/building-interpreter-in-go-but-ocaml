@@ -11,6 +11,8 @@ let repl () =
         line |> Lexer.tokenize |> Parser.parse
         |> Evaluator.evaluate ~env:repl_env
         |> Object.string_of_object |> print_endline;
+        (* line |> Lexer.tokenize |> Parser.parse |> Ast.string_of_program *)
+        (* |> print_endline; *)
         repl' ()
   in
   repl' ()

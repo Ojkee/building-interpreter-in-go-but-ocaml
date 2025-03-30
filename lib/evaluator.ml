@@ -75,6 +75,9 @@ let rec eval (env : enviroment) (node : node_type) : data_obj =
       match Hashtbl.find_opt env x with
       | Some obj -> obj
       | None -> new_error "identifier not found: %s" x)
+  | `Expr (FunctionLiteral (_, idents, Block (_, stmts))) ->
+      ignore (idents, stmts);
+      failwith "TODO: FunctionLiteral evaluation"
   | `Expr expr ->
       new_error "Unimplemented expression type in eval: %s"
         (string_of_expression expr)

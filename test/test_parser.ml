@@ -510,7 +510,7 @@ let test_function_literal () =
               ExpressionStatement
                 (FunctionLiteral
                    ( KEYWORD FUNCTION,
-                     [ IDENT "x"; IDENT "y" ],
+                     [ Identifier (IDENT "x"); Identifier (IDENT "y") ],
                      Block
                        ( PAREN LBRACE,
                          [
@@ -539,7 +539,9 @@ let test_function_literal () =
             [
               ExpressionStatement
                 (FunctionLiteral
-                   (KEYWORD FUNCTION, [ IDENT "x" ], Block (PAREN LBRACE, [])));
+                   ( KEYWORD FUNCTION,
+                     [ Identifier (IDENT "x") ],
+                     Block (PAREN LBRACE, []) ));
             ];
           errors = [];
         } );
@@ -550,7 +552,11 @@ let test_function_literal () =
               ExpressionStatement
                 (FunctionLiteral
                    ( KEYWORD FUNCTION,
-                     [ IDENT "x"; IDENT "y"; IDENT "z" ],
+                     [
+                       Identifier (IDENT "x");
+                       Identifier (IDENT "y");
+                       Identifier (IDENT "z");
+                     ],
                      Block (PAREN LBRACE, []) ));
             ];
           errors = [];
@@ -646,6 +652,55 @@ let test_parser_additional () =
                             [
                               ExpressionStatement
                                 (IntegerLiteral (INT "10", 10));
+                            ] ),
+                        Some
+                          (Block
+                             ( PAREN LBRACE,
+                               [
+                                 ExpressionStatement
+                                   (IntegerLiteral (INT "4", 4));
+                               ] )) );
+                };
+            ];
+          errors = [];
+        } );
+      ( "let x = if (10 > 4) { let a = if (10 < 22) { 3; }; } else { 4; } ;",
+        {
+          statements =
+            [
+              LetStatement
+                {
+                  ident = Identifier (IDENT "x");
+                  value =
+                    IfExpression
+                      ( KEYWORD IF,
+                        Infix
+                          ( IntegerLiteral (INT "10", 10),
+                            OPERATOR GT,
+                            ">",
+                            IntegerLiteral (INT "4", 4) ),
+                        Block
+                          ( PAREN LBRACE,
+                            [
+                              LetStatement
+                                {
+                                  ident = Identifier (IDENT "a");
+                                  value =
+                                    IfExpression
+                                      ( KEYWORD IF,
+                                        Infix
+                                          ( IntegerLiteral (INT "10", 10),
+                                            OPERATOR LT,
+                                            "<",
+                                            IntegerLiteral (INT "22", 22) ),
+                                        Block
+                                          ( PAREN LBRACE,
+                                            [
+                                              ExpressionStatement
+                                                (IntegerLiteral (INT "3", 3));
+                                            ] ),
+                                        None );
+                                };
                             ] ),
                         Some
                           (Block

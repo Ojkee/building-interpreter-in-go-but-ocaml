@@ -168,6 +168,54 @@ let test_eval_let_statements () =
   in
   List.iter test_fn cases
 
+let test_eval_function_object () =
+  let cases =
+    [
+      ( "fn(x) { x + 2; };",
+        let h : enviroment = Hashtbl.create 10 in
+        (* POPULATE *)
+        FunctionObj
+          ( [ Identifier (IDENT "x") ],
+            [
+              ExpressionStatement
+                (Infix
+                   ( Identifier (IDENT "x"),
+                     OPERATOR PLUS,
+                     "+",
+                     IntegerLiteral (INT "2", 2) ));
+            ],
+            h ) );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object_deb) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases
+
+let test_eval_function_application () =
+  let cases =
+    [
+      ("let identity = fn(x) { x; } identity(5);", IntegerObj 5);
+      ("let identity = fn(x) { return x; } identity(5);", IntegerObj 5);
+      ("let double = fn(x) { x * 2; } double(5);", IntegerObj 10);
+      ("let add = fn(x, y) { x + y; } add(5, 5);", IntegerObj 10);
+      ("let add = fn(x, y) { x + y; } add(5 + 5, add(5, 5));", IntegerObj 20);
+      ("fn (x) { x; }(5)", IntegerObj 5);
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object_deb) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -185,4 +233,8 @@ let () =
         [ test_case "Basic" `Quick test_eval_error_handling ] );
       ( "Testing eval let statements",
         [ test_case "Basic" `Quick test_eval_let_statements ] );
+      ( "Testing eval function object",
+        [ test_case "Basic" `Quick test_eval_function_object ] );
+      ( "Testing eval function application",
+        [ test_case "Basic" `Quick test_eval_function_application ] );
     ]

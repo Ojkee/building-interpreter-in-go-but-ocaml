@@ -7,7 +7,7 @@ type expression =
   | Prefix of token * string * expression
   | Infix of expression * token * string * expression
   | IfExpression of token * expression * block * block option
-  | FunctionLiteral of token * token list * block
+  | FunctionLiteral of token * expression list * block
   | CallExpression of token * expression * expression list
   | PLACEHOLDER_EXPR
 
@@ -48,7 +48,7 @@ let rec string_of_expression = function
       ^ "\n}"
   | FunctionLiteral (_, idents, Block (_, stmts)) ->
       "fn("
-      ^ (idents |> List.map Lexer.string_of_token |> String.concat ", ")
+      ^ (idents |> List.map string_of_expression |> String.concat ", ")
       ^ ") {\n" ^ string_of_statements stmts ^ "\n}"
   | CallExpression (_, idnet_fn, args) ->
       string_of_expression idnet_fn

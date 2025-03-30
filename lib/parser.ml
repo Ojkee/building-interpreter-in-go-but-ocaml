@@ -2,8 +2,7 @@ open Lexer
 open Ast
 
 let rec skip_till_semicolon = function
-  | [] -> [ EOF ]
-  | [ EOF ] -> [ EOF ]
+  | [] | [ EOF ] -> [ EOF ]
   | DELIMITER SEMICOLON :: t -> t
   | _ :: t -> skip_till_semicolon t
 
@@ -25,15 +24,14 @@ let build_if_expression (cond : expression) (cons : statement list)
   | None -> IfExpression (KEYWORD IF, cond, Block (PAREN LBRACE, cons), None)
 
 let parse_function_parameters (tokens : token list) :
-    token list * token list * string list =
+    expression list * token list * string list =
   let rec parse_function_parameters' t params errs =
     match t with
-    | [] -> (List.rev params, [ EOF ], errs)
-    | [ EOF ] -> (List.rev params, [ EOF ], errs)
+    | [] | [ EOF ] -> (List.rev params, [ EOF ], errs)
     | IDENT x :: PAREN RPAREN :: tail ->
-        (List.rev (IDENT x :: params), tail, errs)
+        (List.rev (Identifier (IDENT x) :: params), tail, errs)
     | IDENT x :: DELIMITER COMMA :: (IDENT _ :: _ as tail) ->
-        parse_function_parameters' tail (IDENT x :: params) errs
+        parse_function_parameters' tail (Identifier (IDENT x) :: params) errs
     | PAREN RPAREN :: tail -> (List.rev params, tail, errs)
     | _ -> (List.rev params, t, "Parsing function parameters err" :: errs)
   in
@@ -85,8 +83,7 @@ and parse_call_arguments (tokens : token list) :
     expression list * token list * string list =
   let rec parse_call_arguments' toks exprs errs =
     match toks with
-    | [] -> (exprs, toks, errs)
-    | [ EOF ] -> (exprs, toks, errs)
+    | [] | [ EOF ] -> (exprs, toks, errs)
     | PAREN RPAREN :: rest -> (exprs, rest, errs)
     | DELIMITER COMMA :: rest -> (
         match parse_expression rest LOWEST with
@@ -105,9 +102,8 @@ and parse_call_arguments (tokens : token list) :
 let parse (tokens : token list) : program =
   let rec advance tokens stmts errs =
     match tokens with
-    | [] -> ({ statements = List.rev stmts; errors = List.rev errs }, [ EOF ])
-    | [ EOF ] ->
-        ({ statements = List.rev stmts; errors = List.rev errs }, tokens)
+    | [] | [ EOF ] ->
+        ({ statements = List.rev stmts; errors = List.rev errs }, [ EOF ])
     | PAREN RBRACE :: t ->
         ({ statements = List.rev stmts; errors = List.rev errs }, t)
     | KEYWORD LET
@@ -145,6 +141,30 @@ let parse (tokens : token list) : program =
                       :: stmts)
                       (cons_errs @ errs)))
         | None -> advance t stmts ("Parse if err" :: errs))
+    | KEYWORD LET
+      :: IDENT x
+      :: OPERATOR ASSIGN
+      :: KEYWORD FUNCTION
+      :: PAREN LPAREN
+      :: t -> (
+        let params, after_params, param_errs = parse_function_parameters t in
+        match after_params with
+        | PAREN LBRACE :: rest -> (
+            match advance rest [] [] with
+            | { statements = body_stmts; errors = body_errs }, after_body ->
+                advance after_body
+                  (LetStatement
+                     {
+                       ident = Identifier (IDENT x);
+                       value =
+                         FunctionLiteral
+                           ( KEYWORD FUNCTION,
+                             params,
+                             Block (PAREN LBRACE, body_stmts) );
+                     }
+                  :: stmts)
+                  (param_errs @ body_errs @ errs))
+        | rest -> advance rest stmts errs)
     | KEYWORD LET :: IDENT x :: OPERATOR ASSIGN :: t -> (
         match parse_expression t LOWEST with
         | Some (expr, after_exrp) ->
