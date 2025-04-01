@@ -2,6 +2,7 @@ open Ast
 
 type data_obj =
   | IntegerObj of int
+  | StringObj of string
   | BooleanObj of bool
   | NullObj
   | ReturnValueObj of data_obj

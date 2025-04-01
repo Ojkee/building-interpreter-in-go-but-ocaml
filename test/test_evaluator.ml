@@ -233,6 +233,23 @@ let test_eval_closures () =
   in
   List.iter test_fn cases
 
+let test_eval_string () =
+  let cases =
+    [
+      ("\"Hello World!\"", StringObj "Hello World!");
+      ( "\"Hello\" + \" \" + \"other\" + \" \" + \"World!\"",
+        StringObj "Hello other World!" );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object_deb) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -255,4 +272,5 @@ let () =
       ( "Testing eval function application",
         [ test_case "Basic" `Quick test_eval_function_application ] );
       ("Testing eval closures", [ test_case "Basic" `Quick test_eval_closures ]);
+      ("Testing eval string", [ test_case "Basic" `Quick test_eval_string ]);
     ]

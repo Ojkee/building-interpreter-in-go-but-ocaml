@@ -109,6 +109,8 @@ let test_tokenize () =
           DELIMITER SEMICOLON;
           EOF;
         ] );
+      ("\"foobar\"", [ STRING "foobar"; EOF ]);
+      ("\"foo bar\"", [ STRING "foo bar"; EOF ]);
     ]
   in
   let test_fn = function

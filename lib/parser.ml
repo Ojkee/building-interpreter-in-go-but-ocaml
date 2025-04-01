@@ -36,6 +36,7 @@ and parse_prefix (tokens : token list) : (expression * token list) option =
   match tokens with
   | IDENT x :: t -> Some (Identifier (IDENT x), t)
   | INT x :: t -> Some (IntegerLiteral (INT x, int_of_string x), t)
+  | STRING x :: t -> Some (StringLiteral (STRING x, x), t)
   | KEYWORD TRUE :: t -> Some (Boolean (KEYWORD TRUE, true), t)
   | KEYWORD FALSE :: t -> Some (Boolean (KEYWORD FALSE, false), t)
   | OPERATOR op :: t when match op with MINUS | BANG -> true | _ -> false -> (
@@ -196,7 +197,7 @@ let parse (tokens : token list) : program =
               ("Parsing return body err" :: errs))
     | h :: t
       when match h with
-           | INT _ | IDENT _
+           | INT _ | IDENT _ | STRING _
            | OPERATOR MINUS
            | OPERATOR BANG
            | KEYWORD TRUE
@@ -255,6 +256,10 @@ let parse (tokens : token list) : program =
                   :: stmts)
                   (param_errs @ body_errs @ errs))
         | rest -> advance rest stmts errs)
+    (* | (STRING x as string_tok) :: t -> *)
+    (*     advance t *)
+    (*       (ExpressionStatement (StringLiteral (string_tok, x)) :: stmts) *)
+    (*       errs *)
     | _ :: t -> advance t stmts errs
   in
   match advance tokens [] [] with prog, _ -> prog

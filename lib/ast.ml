@@ -3,6 +3,7 @@ type token = Lexer.token
 type expression =
   | Identifier of token
   | IntegerLiteral of token * int
+  | StringLiteral of token * string
   | Boolean of token * bool
   | Prefix of token * string * expression
   | Infix of expression * token * string * expression
@@ -34,6 +35,7 @@ let rec string_of_expression = function
   | Identifier (IDENT x) -> x
   | Identifier tok -> "Identifier(" ^ Lexer.string_of_token tok ^ ")"
   | IntegerLiteral (_, x) -> string_of_int x
+  | StringLiteral (_, x) -> x
   | Boolean (_, x) -> string_of_bool x
   | Prefix (_, op, x) -> "(" ^ op ^ string_of_expression x ^ ")"
   | Infix (x1, _, op, x2) ->

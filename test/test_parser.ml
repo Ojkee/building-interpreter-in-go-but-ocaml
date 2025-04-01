@@ -724,6 +724,29 @@ let test_parser_additional () =
   in
   List.iter test_fn cases
 
+let test_string_literal_expressions () =
+  let cases =
+    [
+      ( "\"hello world\";",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (StringLiteral (STRING "hello world", "hello world"));
+            ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let program = input |> tokenize |> parse in
+        check
+          (testable (Fmt.of_to_string string_of_program) ( = ))
+          ("Parsing:\n" ^ input) expected program
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -746,4 +769,6 @@ let () =
       ("Parsing call string", [ test_case "Basic" `Quick test_call_string ]);
       ( "Parsing additional tests",
         [ test_case "Basic" `Quick test_parser_additional ] );
+      ( "Parsing string literal",
+        [ test_case "Basic" `Quick test_string_literal_expressions ] );
     ]

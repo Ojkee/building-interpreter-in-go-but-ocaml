@@ -6,7 +6,10 @@ type node_type = [ `Prog of program | `Stmt of statement | `Expr of expression ]
 
 let same_type_obj (a : data_obj) (b : data_obj) : bool =
   match (a, b) with
-  | IntegerObj _, IntegerObj _ | BooleanObj _, BooleanObj _ -> true
+  | IntegerObj _, IntegerObj _
+  | BooleanObj _, BooleanObj _
+  | StringObj _, StringObj _ ->
+      true
   | _, _ -> false
 
 let new_error fmt = Printf.ksprintf (fun msg -> ErrorObj msg) fmt
@@ -38,6 +41,7 @@ let rec eval (env : enviroment) (node : node_type) : data_obj =
       new_error "Unimplemented statement type in eval: %s"
         (string_of_statement stmt)
   | `Expr (IntegerLiteral (_, value)) -> IntegerObj value
+  | `Expr (StringLiteral (_, value)) -> StringObj value
   | `Expr (Boolean (_, value)) -> BooleanObj value
   | `Expr (Prefix (prefix_tok, _, value)) -> (
       match eval env (`Expr value) with
@@ -70,6 +74,7 @@ let rec eval (env : enviroment) (node : node_type) : data_obj =
       | IntegerObj x, OPERATOR LT, IntegerObj y -> BooleanObj (x < y)
       | BooleanObj x, OPERATOR EQ, BooleanObj y -> BooleanObj (x == y)
       | BooleanObj x, OPERATOR NOT_EQ, BooleanObj y -> BooleanObj (x != y)
+      | StringObj x, OPERATOR PLUS, StringObj y -> StringObj (x ^ y)
       | x, op, y ->
           new_error "unknown operator: %s %s %s" (type_string_of_object x)
             (string_of_token op) (type_string_of_object y))

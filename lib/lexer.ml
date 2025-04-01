@@ -20,6 +20,7 @@ type token =
   | IDENT of string
   | INT of string
   | FLOAT of string
+  | STRING of string
   | OPERATOR of operator
   | PAREN of parenthesis
   | DELIMITER of delimiter
@@ -60,6 +61,7 @@ let string_of_token = function
   | IDENT x -> x
   | INT i -> i
   | FLOAT f -> f
+  | STRING s -> s
   | OPERATOR op -> string_of_operator op
   | PAREN p -> string_of_parenthesis p
   | DELIMITER d -> string_of_delimiter d
@@ -113,6 +115,16 @@ let get_keyword_or_ident (word : string) : token =
   | Some keywordType -> keywordType
   | None -> IDENT word
 
+let read_string (chars : char list) : string * char list =
+  let rec read_string' value rest =
+    match rest with
+    | [] -> (value, [])
+    | h :: t when h = '"' -> (value, t)
+    | h :: t -> read_string' (h :: value) t
+  in
+  match read_string' [] chars with
+  | value, rest -> (value |> List.rev |> List.to_seq |> String.of_seq, rest)
+
 let run (chars : char list) : token list =
   let rec advance chars dst =
     match chars with
@@ -133,13 +145,15 @@ let run (chars : char list) : token list =
     | '}' :: tail -> advance tail (PAREN RBRACE :: dst)
     | ',' :: tail -> advance tail (DELIMITER COMMA :: dst)
     | ';' :: tail -> advance tail (DELIMITER SEMICOLON :: dst)
+    | '"' :: tail -> (
+        match read_string tail with
+        | value, rest -> advance rest (STRING value :: dst))
     | h :: tail when is_whitespace h -> advance tail dst
-    | h :: _ when is_alpha h ->
-        let word, rest = read_identifier chars in
-        advance rest (get_keyword_or_ident word :: dst)
-    | h :: _ when is_digit h ->
-        let num, rest = read_number chars in
-        advance rest (INT num :: dst)
+    | h :: _ when is_alpha h -> (
+        match read_identifier chars with
+        | word, rest -> advance rest (get_keyword_or_ident word :: dst))
+    | h :: _ when is_digit h -> (
+        match read_number chars with num, rest -> advance rest (INT num :: dst))
     | h :: tail -> advance tail (ILLEGAL (String.make 1 h) :: dst)
   in
   advance chars []

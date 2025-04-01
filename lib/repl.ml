@@ -13,7 +13,9 @@ let repl () =
         |> Object.string_of_object_repl |> print_endline;
 
         (* DEBUG *)
-        (* line |> Lexer.tokenize |> Parser.parse *)
+        (* let prog = line |> Lexer.tokenize |> Parser.parse in *)
+        (* prog |> Ast.string_of_program |> print_endline; *)
+        (* prog *)
         (* |> Evaluator.evaluate ~env:repl_env *)
         (* |> Object.string_of_object |> print_endline; *)
         repl' ()

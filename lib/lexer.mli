@@ -20,6 +20,7 @@ type token =
   | IDENT of string
   | INT of string
   | FLOAT of string
+  | STRING of string
   | OPERATOR of operator
   | PAREN of parenthesis
   | DELIMITER of delimiter
