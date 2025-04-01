@@ -12,17 +12,6 @@ let infixable (prec : precedence) (op : operator) : bool =
   is_infix_operator op
   && precedence_value prec < token_precendence_value (OPERATOR op)
 
-let build_if_expression (cond : expression) (cons : statement list)
-    (alter : statement list option) : expression =
-  match alter with
-  | Some alt_stmts ->
-      IfExpression
-        ( KEYWORD IF,
-          cond,
-          Block (PAREN LBRACE, cons),
-          Some (Block (PAREN LBRACE, alt_stmts)) )
-  | None -> IfExpression (KEYWORD IF, cond, Block (PAREN LBRACE, cons), None)
-
 let parse_function_parameters (tokens : token list) :
     expression list * token list * string list =
   let rec parse_function_parameters' t params errs =
@@ -126,8 +115,7 @@ let parse (tokens : token list) : program =
                           (LetStatement
                              {
                                ident = Identifier (IDENT x);
-                               value =
-                                 build_if_expression cond cons (Some alter);
+                               value = build_if_expr cond cons (Some alter);
                              }
                           :: stmts)
                           (alter_errs @ errs))
@@ -136,7 +124,7 @@ let parse (tokens : token list) : program =
                       (LetStatement
                          {
                            ident = Identifier (IDENT x);
-                           value = build_if_expression cond cons None;
+                           value = build_if_expr cond cons None;
                          }
                       :: stmts)
                       (cons_errs @ errs)))
@@ -161,13 +149,9 @@ let parse (tokens : token list) : program =
                      {
                        ident = Identifier (IDENT x);
                        value =
-                         CallExpression
-                           ( PAREN LPAREN,
-                             FunctionLiteral
-                               ( KEYWORD FUNCTION,
-                                 params,
-                                 Block (PAREN LBRACE, body_stmts) ),
-                             call_params );
+                         build_call
+                           (build_fn_literal params body_stmts)
+                           call_params;
                      }
                   :: stmts)
                   (body_errs @ call_errs @ errs)
@@ -176,11 +160,7 @@ let parse (tokens : token list) : program =
                   (LetStatement
                      {
                        ident = Identifier (IDENT x);
-                       value =
-                         FunctionLiteral
-                           ( KEYWORD FUNCTION,
-                             params,
-                             Block (PAREN LBRACE, body_stmts) );
+                       value = build_fn_literal params body_stmts;
                      }
                   :: stmts)
                   (param_errs @ body_errs @ errs))
@@ -241,12 +221,12 @@ let parse (tokens : token list) : program =
                         tokens_after_alternative ) ->
                         advance tokens_after_alternative
                           (ExpressionStatement
-                             (build_if_expression cond cons (Some alter))
+                             (build_if_expr cond cons (Some alter))
                           :: stmts)
                           (alter_errs @ errs))
                 | rest ->
                     advance rest
-                      (ExpressionStatement (build_if_expression cond cons None)
+                      (ExpressionStatement (build_if_expr cond cons None)
                       :: stmts)
                       (cons_errs @ errs)))
         | None -> advance t stmts ("Parse if err" :: errs))
@@ -264,22 +244,14 @@ let parse (tokens : token list) : program =
                 in
                 advance after_call
                   (ExpressionStatement
-                     (CallExpression
-                        ( PAREN LPAREN,
-                          FunctionLiteral
-                            ( KEYWORD FUNCTION,
-                              params,
-                              Block (PAREN LBRACE, body_stmts) ),
-                          call_params ))
+                     (build_call
+                        (build_fn_literal params body_stmts)
+                        call_params)
                   :: stmts)
                   (body_errs @ call_errs @ errs)
             | { statements = body_stmts; errors = body_errs }, after_body ->
                 advance after_body
-                  (ExpressionStatement
-                     (FunctionLiteral
-                        ( KEYWORD FUNCTION,
-                          params,
-                          Block (PAREN LBRACE, body_stmts) ))
+                  (ExpressionStatement (build_fn_literal params body_stmts)
                   :: stmts)
                   (param_errs @ body_errs @ errs))
         | rest -> advance rest stmts errs)

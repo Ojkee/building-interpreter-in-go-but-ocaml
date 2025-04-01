@@ -37,3 +37,10 @@ val string_of_program : program -> string
 val precedence_value : precedence -> int
 val precedence_of_token : Lexer.token -> precedence
 val token_precendence_value : Lexer.token -> int
+
+(* EXPR BUILDERS *)
+val build_if_expr :
+  expression -> statement list -> statement list option -> expression
+
+val build_fn_literal : expression list -> statement list -> expression
+val build_call : expression -> expression list -> expression

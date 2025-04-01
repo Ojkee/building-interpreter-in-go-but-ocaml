@@ -99,3 +99,22 @@ let precedence_of_token = function
 
 let token_precendence_value (tok : Lexer.token) : int =
   tok |> precedence_of_token |> precedence_value
+
+let build_if_expr (cond : expression) (cons : statement list)
+    (alter : statement list option) : expression =
+  match alter with
+  | Some alt_stmts ->
+      IfExpression
+        ( KEYWORD IF,
+          cond,
+          Block (PAREN LBRACE, cons),
+          Some (Block (PAREN LBRACE, alt_stmts)) )
+  | None -> IfExpression (KEYWORD IF, cond, Block (PAREN LBRACE, cons), None)
+
+let build_fn_literal (params : expression list) (body_stmts : statement list) :
+    expression =
+  FunctionLiteral (KEYWORD FUNCTION, params, Block (PAREN LBRACE, body_stmts))
+
+let build_call (ident : expression) (call_params : expression list) : expression
+    =
+  CallExpression (PAREN LPAREN, ident, call_params)

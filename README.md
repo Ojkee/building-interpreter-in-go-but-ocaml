@@ -21,7 +21,7 @@ This project is an implementation of the Monkey programming language in OCaml, i
     - [x] Integeres
     - [x] Booleans
     - [x] Null
-- [ ] the Evaluator 
+- [x] the Evaluator 
     - [x] Integeres
     - [x] Booleans
     - [x] Null
@@ -30,16 +30,5 @@ This project is an implementation of the Monkey programming language in OCaml, i
     - [x] Conditionals
     - [x] Return Statements
     - [x] Error Handling
-    - [ ] Bindings & the Enviroment
-        - BUG: 
-        ```
-        let add = fn(a, b) { a + b };
-        let sub = fn(a, b) { a - b };
-        let applyFunc = fn(a, b, func) { func(a, b) };
-        applyFunc(2, 2, add);
-        4
-        applyFunc(10, 2, sub);
-        8
-        ```
-        instead of '4' and '8' returns error
-
+    - [x] Bindings & the Enviroment
+- [ ] Extending the Interpreter
