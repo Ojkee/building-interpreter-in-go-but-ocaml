@@ -172,7 +172,7 @@ let test_eval_function_object () =
   let cases =
     [
       ( "fn(x) { x + 2; };",
-        let h : enviroment = Hashtbl.create 10 in
+        let h : enviroment = new_enviroment () in
         (* POPULATE *)
         FunctionObj
           ( [ Identifier (IDENT "x") ],

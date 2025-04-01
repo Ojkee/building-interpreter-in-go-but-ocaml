@@ -30,4 +30,5 @@ This project is an implementation of the Monkey programming language in OCaml, i
     - [x] Conditionals
     - [x] Return Statements
     - [x] Error Handling
-    - [ ] Bindings & the Enviroment
+    - [x] Bindings & the Enviroment
+        - BUG: fn(x) { x == 10 }(5) should return false, not 5

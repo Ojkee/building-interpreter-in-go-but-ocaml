@@ -23,7 +23,7 @@ let rec eval (env : enviroment) (node : node_type) : data_obj =
       match eval env (`Expr v) with
       | ErrorObj _ as err -> err
       | obj ->
-          Hashtbl.add env x obj;
+          Hashtbl.add env.store x obj;
           obj)
   | `Stmt stmt ->
       new_error "Unimplemented statement type in eval: %s"
@@ -72,15 +72,34 @@ let rec eval (env : enviroment) (node : node_type) : data_obj =
           eval_block_statements alter env
       | _ -> NullObj)
   | `Expr (Identifier (IDENT x)) -> (
-      match Hashtbl.find_opt env x with
+      match get_from_env env x with
       | Some obj -> obj
       | None -> new_error "identifier not found: %s" x)
   | `Expr (FunctionLiteral (_, idents, Block (_, stmts))) ->
-      ignore (idents, stmts);
-      failwith "TODO: FunctionLiteral evaluation"
+      FunctionObj (idents, stmts, env)
+  | `Expr (CallExpression (_, ident, exprs)) -> (
+      match eval env (`Expr ident) with
+      | ErrorObj _ as err -> err
+      | FunctionObj _ as fn -> (
+          match eval_expressions env exprs with
+          | [ (ErrorObj _ as err) ] -> err
+          | args -> apply_function fn args)
+      | obj -> new_error "can't call %s" (string_of_object obj))
   | `Expr expr ->
       new_error "Unimplemented expression type in eval: %s"
         (string_of_expression expr)
+
+and eval_expressions (env : enviroment) (exprs : expression list) :
+    data_obj list =
+  let rec eval_expressions' exprs' objs =
+    match exprs' with
+    | [] -> objs
+    | expr :: t -> (
+        match eval env (`Expr expr) with
+        | ErrorObj _ as err -> [ err ]
+        | obj -> eval_expressions' t (obj :: objs))
+  in
+  eval_expressions' exprs []
 
 and eval_block_statements (stmts : statement list) (env : enviroment) : data_obj
     =
@@ -96,6 +115,33 @@ and eval_block_statements (stmts : statement list) (env : enviroment) : data_obj
 
 and eval_program (prog : program) env : data_obj =
   eval_block_statements prog.statements env
+
+and apply_function (fn : data_obj) (args : data_obj list) : data_obj =
+  match fn with
+  | FunctionObj (_, stmts, _) ->
+      let extended_env = extend_function_env fn args in
+      eval_block_statements stmts extended_env |> unpack_return_object
+  | obj -> new_error "not a function: %s" (string_of_object obj)
+
+and extend_function_env (fn : data_obj) (args : data_obj list) : enviroment =
+  ignore args;
+  match fn with
+  | FunctionObj (idents, _, fn_env) ->
+      let env = enclose_enviroment fn_env in
+      List.iter2
+        (fun x y -> Hashtbl.add env.store x y)
+        (List.map
+           (fun x ->
+             match x with
+             | Identifier (IDENT s) -> s
+             | _ -> failwith "Unreachable")
+           idents)
+        args;
+      env
+  | obj ->
+      failwith
+        (Printf.sprintf "extend_function_env takes: FunctionObj, got %s"
+           (string_of_object obj))
 
 let evaluate ?(env = new_enviroment ()) (prog : program) : data_obj =
   eval env (`Prog prog) |> unpack_return_object
