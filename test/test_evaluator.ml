@@ -204,7 +204,24 @@ let test_eval_function_application () =
       ("let double = fn(x) { x * 2; } double(5);", IntegerObj 10);
       ("let add = fn(x, y) { x + y; } add(5, 5);", IntegerObj 10);
       ("let add = fn(x, y) { x + y; } add(5 + 5, add(5, 5));", IntegerObj 20);
-      ("fn (x) { x; }(5)", IntegerObj 5);
+      ("fn (x) { x + 1; }(5)", IntegerObj 6);
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object_deb) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases
+
+let test_eval_closures () =
+  let cases =
+    [
+      ( "let newAdder = fn(x) { fn(y) { x + y; }; }; let addTwo = newAdder(2); \
+         addTwo(2);",
+        IntegerObj 4 );
     ]
   in
   let test_fn = function
@@ -237,4 +254,5 @@ let () =
         [ test_case "Basic" `Quick test_eval_function_object ] );
       ( "Testing eval function application",
         [ test_case "Basic" `Quick test_eval_function_application ] );
+      ("Testing eval closures", [ test_case "Basic" `Quick test_eval_closures ]);
     ]
