@@ -151,6 +151,26 @@ let parse (tokens : token list) : program =
         match after_params with
         | PAREN LBRACE :: rest -> (
             match advance rest [] [] with
+            | ( { statements = body_stmts; errors = body_errs },
+                PAREN LPAREN :: after_body ) ->
+                let call_params, after_call, call_errs =
+                  parse_call_arguments after_body
+                in
+                advance after_call
+                  (LetStatement
+                     {
+                       ident = Identifier (IDENT x);
+                       value =
+                         CallExpression
+                           ( PAREN LPAREN,
+                             FunctionLiteral
+                               ( KEYWORD FUNCTION,
+                                 params,
+                                 Block (PAREN LBRACE, body_stmts) ),
+                             call_params );
+                     }
+                  :: stmts)
+                  (body_errs @ call_errs @ errs)
             | { statements = body_stmts; errors = body_errs }, after_body ->
                 advance after_body
                   (LetStatement
@@ -237,6 +257,22 @@ let parse (tokens : token list) : program =
         match after_params with
         | PAREN LBRACE :: rest -> (
             match advance rest [] [] with
+            | ( { statements = body_stmts; errors = body_errs },
+                PAREN LPAREN :: after_body ) ->
+                let call_params, after_call, call_errs =
+                  parse_call_arguments after_body
+                in
+                advance after_call
+                  (ExpressionStatement
+                     (CallExpression
+                        ( PAREN LPAREN,
+                          FunctionLiteral
+                            ( KEYWORD FUNCTION,
+                              params,
+                              Block (PAREN LBRACE, body_stmts) ),
+                          call_params ))
+                  :: stmts)
+                  (body_errs @ call_errs @ errs)
             | { statements = body_stmts; errors = body_errs }, after_body ->
                 advance after_body
                   (ExpressionStatement

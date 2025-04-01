@@ -4,7 +4,7 @@ This project is an implementation of the Monkey programming language in OCaml, i
 
 # TODO
 - [x] the Lexer
-- [x] the Parser
+- [x] the Parser (NEEDS REFACTOR)
     - [x] Let Statements
     - [x] Return Statements
     - [x] Prefix Statements
@@ -30,5 +30,16 @@ This project is an implementation of the Monkey programming language in OCaml, i
     - [x] Conditionals
     - [x] Return Statements
     - [x] Error Handling
-    - [x] Bindings & the Enviroment
-        - BUG: fn(x) { x == 10 }(5) should return false, not 5
+    - [ ] Bindings & the Enviroment
+        - BUG: 
+        ```
+        let add = fn(a, b) { a + b };
+        let sub = fn(a, b) { a - b };
+        let applyFunc = fn(a, b, func) { func(a, b) };
+        applyFunc(2, 2, add);
+        4
+        applyFunc(10, 2, sub);
+        8
+        ```
+        instead of '4' and '8' returns error
+

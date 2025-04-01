@@ -8,9 +8,12 @@ let repl () =
     match read_line () with
     | "exit" -> exit 0
     | line ->
+        (* line |> Lexer.tokenize |> Parser.parse *)
+        (* |> Evaluator.evaluate ~env:repl_env *)
+        (* |> Object.string_of_object_repl |> print_endline; *)
         line |> Lexer.tokenize |> Parser.parse
         |> Evaluator.evaluate ~env:repl_env
-        |> Object.string_of_object_repl |> print_endline;
+        |> Object.string_of_object |> print_endline;
         repl' ()
   in
   repl' ()

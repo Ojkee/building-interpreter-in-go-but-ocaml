@@ -11,6 +11,15 @@ let same_type_obj (a : data_obj) (b : data_obj) : bool =
 
 let new_error fmt = Printf.ksprintf (fun msg -> ErrorObj msg) fmt
 
+let populate_env env idents args =
+  List.iter2
+    (fun x y -> Hashtbl.add env.store x y)
+    (List.map
+       (fun x ->
+         match x with Identifier (IDENT s) -> s | _ -> failwith "Unreachable")
+       idents)
+    args
+
 let rec eval (env : enviroment) (node : node_type) : data_obj =
   match node with
   | `Prog { statements = _; errors = errs } when List.length errs > 0 ->
@@ -93,7 +102,7 @@ and eval_expressions (env : enviroment) (exprs : expression list) :
     data_obj list =
   let rec eval_expressions' exprs' objs =
     match exprs' with
-    | [] -> objs
+    | [] -> List.rev objs
     | expr :: t -> (
         match eval env (`Expr expr) with
         | ErrorObj _ as err -> [ err ]
@@ -118,26 +127,27 @@ and eval_program (prog : program) env : data_obj =
 
 and apply_function (fn : data_obj) (args : data_obj list) : data_obj =
   match fn with
-  | FunctionObj (_, stmts, _) ->
-      let extended_env = extend_function_env fn args in
-      eval_block_statements stmts extended_env |> unpack_return_object
+  | FunctionObj (_, stmts, _) -> (
+      match extend_function_env fn args with
+      | _, Some err -> err
+      | Some extended_env, None ->
+          eval_block_statements stmts extended_env |> unpack_return_object
+      | _, _ -> failwith "Unreachable")
   | obj -> new_error "not a function: %s" (string_of_object obj)
 
-and extend_function_env (fn : data_obj) (args : data_obj list) : enviroment =
-  ignore args;
+and extend_function_env (fn : data_obj) (args : data_obj list) :
+    enviroment option * data_obj option =
   match fn with
-  | FunctionObj (idents, _, fn_env) ->
+  | FunctionObj (idents, _, fn_env) when List.length idents = List.length args
+    ->
       let env = enclose_enviroment fn_env in
-      List.iter2
-        (fun x y -> Hashtbl.add env.store x y)
-        (List.map
-           (fun x ->
-             match x with
-             | Identifier (IDENT s) -> s
-             | _ -> failwith "Unreachable")
-           idents)
-        args;
-      env
+      populate_env env idents args;
+      (Some env, None)
+  | FunctionObj (idents, _, _) ->
+      ( None,
+        Some
+          (new_error "incorrect number of parameters (want: %d got: %d)"
+             (List.length idents) (List.length args)) )
   | obj ->
       failwith
         (Printf.sprintf "extend_function_env takes: FunctionObj, got %s"
