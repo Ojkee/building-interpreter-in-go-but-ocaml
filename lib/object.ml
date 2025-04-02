@@ -8,12 +8,15 @@ type data_obj =
   | ReturnValueObj of data_obj
   | ErrorObj of string
   | FunctionObj of expression list * statement list * enviroment
+  | BuiltinFnObj of builtinFn
   | PLACEHOLDER_OBJ
 
 and enviroment = {
   store : (string, data_obj) Hashtbl.t;
   outer : enviroment option;
 }
+
+and builtinFn = data_obj list -> data_obj
 
 let new_enviroment () : enviroment = { store = Hashtbl.create 10; outer = None }
 
@@ -26,6 +29,8 @@ let rec get_from_env (env : enviroment) (key : string) : data_obj option =
   | None, Some outer -> get_from_env outer key
   | None, None -> None
 
+let new_error fmt = Printf.ksprintf (fun msg -> ErrorObj msg) fmt
+
 let rec string_of_object = function
   | IntegerObj x -> string_of_int x
   | StringObj x -> "\"" ^ x ^ "\""
@@ -37,6 +42,7 @@ let rec string_of_object = function
       "fn("
       ^ (List.map string_of_expression idents |> String.concat ", ")
       ^ ") {\n" ^ string_of_statements stmts ^ "\n}"
+  | BuiltinFnObj _ -> "builtin function"
   | PLACEHOLDER_OBJ -> "PLACEHOLDER_OBJ"
 
 let string_of_object_repl = function
@@ -59,6 +65,7 @@ let rec string_of_object_deb = function
       "function(fn("
       ^ (List.map string_of_expression idents |> String.concat ", ")
       ^ ") {\n" ^ string_of_statements stmts ^ "\n})"
+  | BuiltinFnObj _ -> "builtinFn"
   | PLACEHOLDER_OBJ -> "PLACEHOLDER_OBJ"
 
 let rec type_string_of_object = function
@@ -69,6 +76,7 @@ let rec type_string_of_object = function
   | ReturnValueObj x -> "(RETURN (" ^ type_string_of_object x ^ ")"
   | ErrorObj x -> "ERROR(" ^ x ^ ")"
   | FunctionObj _ -> "FUNCTION"
+  | BuiltinFnObj _ -> "BUILTIN_FUNCTION"
   | PLACEHOLDER_OBJ -> "PLACEHOLDER"
 
 let unpack_return_object = function

@@ -250,6 +250,26 @@ let test_eval_string () =
   in
   List.iter test_fn cases
 
+let test_eval_builtin_functions () =
+  let cases =
+    [
+      ("len(\"\")", IntegerObj 0);
+      ("len(\"four\")", IntegerObj 4);
+      ("len(\"hello world\")", IntegerObj 11);
+      ("len(1)", ErrorObj "argument to `len` not supported, got INTEGER");
+      ( "len(\"one\", \"two\")",
+        ErrorObj "wrong number of arguments. got=2, want=1" );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object_deb) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -273,4 +293,6 @@ let () =
         [ test_case "Basic" `Quick test_eval_function_application ] );
       ("Testing eval closures", [ test_case "Basic" `Quick test_eval_closures ]);
       ("Testing eval string", [ test_case "Basic" `Quick test_eval_string ]);
+      ( "Testing eval builtin functions",
+        [ test_case "Basic" `Quick test_eval_builtin_functions ] );
     ]

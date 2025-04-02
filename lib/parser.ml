@@ -16,15 +16,16 @@ let parse_function_parameters (tokens : token list) :
     expression list * token list * string list =
   let rec parse_function_parameters' t params errs =
     match t with
-    | [] | [ EOF ] -> (List.rev params, [ EOF ], errs)
+    | [] | [ EOF ] -> (params, [ EOF ], errs)
     | IDENT x :: PAREN RPAREN :: tail ->
-        (List.rev (Identifier (IDENT x) :: params), tail, errs)
+        (Identifier (IDENT x) :: params, tail, errs)
     | IDENT x :: DELIMITER COMMA :: (IDENT _ :: _ as tail) ->
         parse_function_parameters' tail (Identifier (IDENT x) :: params) errs
-    | PAREN RPAREN :: tail -> (List.rev params, tail, errs)
-    | _ -> (List.rev params, t, "Parsing function parameters err" :: errs)
+    | PAREN RPAREN :: tail -> (params, tail, errs)
+    | _ -> (params, t, "Parsing function parameters err" :: errs)
   in
-  parse_function_parameters' tokens [] []
+  match parse_function_parameters' tokens [] [] with
+  | params, rest, errs -> (List.rev params, rest, errs)
 
 let rec parse_expression (tokens : token list) (prec : precedence) :
     (expression * token list) option =
@@ -195,20 +196,6 @@ let parse (tokens : token list) : program =
         | None ->
             advance (skip_till_semicolon t) stmts
               ("Parsing return body err" :: errs))
-    | h :: t
-      when match h with
-           | INT _ | IDENT _ | STRING _
-           | OPERATOR MINUS
-           | OPERATOR BANG
-           | KEYWORD TRUE
-           | KEYWORD FALSE
-           | PAREN LPAREN ->
-               true
-           | _ -> false -> (
-        match parse_expression tokens LOWEST with
-        | Some (expr, rest) ->
-            advance rest (ExpressionStatement expr :: stmts) errs
-        | None -> advance t stmts ("Parse int/ident/-/! err" :: errs))
     | KEYWORD IF :: PAREN LPAREN :: t -> (
         match parse_expression t LOWEST with
         | Some (cond, tokens_after_cond) -> (
@@ -256,10 +243,20 @@ let parse (tokens : token list) : program =
                   :: stmts)
                   (param_errs @ body_errs @ errs))
         | rest -> advance rest stmts errs)
-    (* | (STRING x as string_tok) :: t -> *)
-    (*     advance t *)
-    (*       (ExpressionStatement (StringLiteral (string_tok, x)) :: stmts) *)
-    (*       errs *)
+    | h :: t
+      when match h with
+           | INT _ | IDENT _ | STRING _
+           | OPERATOR MINUS
+           | OPERATOR BANG
+           | KEYWORD TRUE
+           | KEYWORD FALSE
+           | PAREN LPAREN ->
+               true
+           | _ -> false -> (
+        match parse_expression tokens LOWEST with
+        | Some (expr, rest) ->
+            advance rest (ExpressionStatement expr :: stmts) errs
+        | None -> advance t stmts ("Parse int/ident/-/! err" :: errs))
     | _ :: t -> advance t stmts errs
   in
   match advance tokens [] [] with prog, _ -> prog

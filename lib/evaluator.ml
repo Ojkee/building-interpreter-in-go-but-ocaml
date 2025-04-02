@@ -1,6 +1,7 @@
 open Ast
 open Lexer
 open Object
+open Builtins
 
 type node_type = [ `Prog of program | `Stmt of statement | `Expr of expression ]
 
@@ -11,8 +12,6 @@ let same_type_obj (a : data_obj) (b : data_obj) : bool =
   | StringObj _, StringObj _ ->
       true
   | _, _ -> false
-
-let new_error fmt = Printf.ksprintf (fun msg -> ErrorObj msg) fmt
 
 let populate_env env idents args =
   List.iter2
@@ -88,13 +87,16 @@ let rec eval (env : enviroment) (node : node_type) : data_obj =
   | `Expr (Identifier (IDENT x)) -> (
       match get_from_env env x with
       | Some obj -> obj
-      | None -> new_error "identifier not found: %s" x)
+      | None -> (
+          match Builtins.find_opt x with
+          | Some obj -> obj
+          | None -> new_error "identifier not found: %s" x))
   | `Expr (FunctionLiteral (_, idents, Block (_, stmts))) ->
       FunctionObj (idents, stmts, env)
   | `Expr (CallExpression (_, ident, exprs)) -> (
       match eval env (`Expr ident) with
       | ErrorObj _ as err -> err
-      | FunctionObj _ as fn -> (
+      | (FunctionObj _ | BuiltinFnObj _) as fn -> (
           match eval_expressions env exprs with
           | [ (ErrorObj _ as err) ] -> err
           | args -> apply_function fn args)
@@ -138,6 +140,7 @@ and apply_function (fn : data_obj) (args : data_obj list) : data_obj =
       | Some extended_env, None ->
           eval_block_statements stmts extended_env |> unpack_return_object
       | _, _ -> failwith "Unreachable")
+  | BuiltinFnObj fn_impl -> fn_impl args
   | obj -> new_error "not a function: %s" (string_of_object obj)
 
 and extend_function_env (fn : data_obj) (args : data_obj list) :
