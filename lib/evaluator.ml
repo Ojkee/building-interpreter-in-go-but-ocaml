@@ -49,9 +49,7 @@ let rec eval (env : enviroment) (node : node_type) : data_obj =
       | ArrayObj elements, IntegerObj idx
         when idx < 0 || List.length elements - 1 < idx ->
           NullObj
-      | ArrayObj elements, IntegerObj idx ->
-          idx |> string_of_int |> print_endline;
-          List.nth elements idx
+      | ArrayObj elements, IntegerObj idx -> List.nth elements idx
       | left_obj, _ ->
           new_error "index operator not supported: %s"
             (type_string_of_object left_obj))

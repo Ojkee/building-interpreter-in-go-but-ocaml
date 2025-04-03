@@ -311,7 +311,39 @@ let test_eval_index_expressions () =
   List.iter test_fn cases
 
 let test_eval_complex_programs () =
-  let cases = [] in
+  let cases =
+    [
+      ( "let map = fn(arr, f) {\n\
+         let iter = fn(arr, accumulated) {\n\
+         if (len(arr) == 0) {\n\
+         accumulated; \n\
+         } else {\n\
+         iter(rest(arr), push(accumulated, f(first(arr))));\n\
+         }\n\
+         };\n\
+         iter(arr, []);\n\
+         };\n\
+         let a = [1, 2, 3, 4];\n\
+         let double = fn(x) { x * 2 };\n\
+         map(a, double);",
+        ArrayObj [ IntegerObj 2; IntegerObj 4; IntegerObj 6; IntegerObj 8 ] );
+      ( "let reduce = fn(arr, initial, f) {\n\
+         let iter = fn(arr, result) {\n\
+         if (len(arr) == 0) {\n\
+         result\n\
+         } else {\n\
+         iter(rest(arr), f(result, first(arr)));\n\
+         }\n\
+         };\n\
+         iter(arr, initial);\n\
+         };\n\
+         let sum = fn(arr) {\n\
+         reduce(arr, 0, fn(initial, el) { initial + el });\n\
+         };\n\
+         sum([1, 2, 3, 4, 5]);",
+        IntegerObj 15 );
+    ]
+  in
   let test_fn = function
     | input, expected ->
         let obj = input |> tokenize |> parse |> evaluate in
