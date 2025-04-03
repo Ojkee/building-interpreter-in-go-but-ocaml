@@ -7,11 +7,11 @@ module Builtins = struct
     match args with
     | [ StringObj arg ] -> IntegerObj (String.length arg)
     | [ x ] ->
-        new_error "argument to `len` not supported, got %s"
+        new_error "argument to `len` not supported, got: %s"
           (type_string_of_object x)
     | _ ->
-        new_error "wrong number of arguments. got=%d, want=%d"
-          (List.length args) 1
+        new_error "wrong number of arguments. (want: %d, got: %d)" 1
+          (List.length args)
 
   let table : builtinFnTable =
     let b = Hashtbl.create 10 in

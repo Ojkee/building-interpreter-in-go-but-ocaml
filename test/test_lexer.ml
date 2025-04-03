@@ -111,6 +111,16 @@ let test_tokenize () =
         ] );
       ("\"foobar\"", [ STRING "foobar"; EOF ]);
       ("\"foo bar\"", [ STRING "foo bar"; EOF ]);
+      ( "[1, 2];",
+        [
+          PAREN LBRACKET;
+          INT "1";
+          DELIMITER COMMA;
+          INT "2";
+          PAREN RBRACKET;
+          DELIMITER SEMICOLON;
+          EOF;
+        ] );
     ]
   in
   let test_fn = function

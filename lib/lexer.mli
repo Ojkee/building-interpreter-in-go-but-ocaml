@@ -12,7 +12,7 @@ type operator =
 
 type delimiter = COMMA | SEMICOLON
 type keyword = FUNCTION | LET | TRUE | FALSE | IF | ELSE | RETURN
-type parenthesis = LPAREN | RPAREN | LBRACE | RBRACE
+type parenthesis = LPAREN | RPAREN | LBRACE | RBRACE | LBRACKET | RBRACKET
 
 type token =
   | ILLEGAL of string
@@ -30,4 +30,4 @@ val string_of_token : token -> string
 val string_of_tokens : token list -> string
 val tokenize : string -> token list
 val string_of_operator : operator -> string
-val is_infix_operator : operator -> bool
+val is_infix_operator : token -> bool

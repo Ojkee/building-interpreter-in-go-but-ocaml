@@ -359,6 +359,9 @@ let test_operator_precendence () =
       ("false", "false");
       ("3 > 5 == false", "((3>5)==false)");
       ("3 < 5 == true", "((3<5)==true)");
+      ("a * [1, 2, 3, 4][b * c] * d", "((a*([1, 2, 3, 4][(b*c)]))*d)");
+      ( "add(a * b[2], b[1], 2 * [1, 2][1])",
+        "add((a*(b[2])), (b[1]), (2*([1, 2][1])))" );
     ]
   in
   let test_fn = function
@@ -747,6 +750,100 @@ let test_string_literal_expressions () =
   in
   List.iter test_fn cases
 
+let test_array_literals () =
+  let cases =
+    [
+      ( "[1, 2 * 2, 3 + 3]",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (ArrayLiteral
+                   ( PAREN LBRACKET,
+                     [
+                       IntegerLiteral (INT "1", 1);
+                       Infix
+                         ( IntegerLiteral (INT "2", 2),
+                           OPERATOR ASTERISK,
+                           "*",
+                           IntegerLiteral (INT "2", 2) );
+                       Infix
+                         ( IntegerLiteral (INT "3", 3),
+                           OPERATOR PLUS,
+                           "+",
+                           IntegerLiteral (INT "3", 3) );
+                     ] ));
+            ];
+          errors = [];
+        } );
+      ( "let x = [1, 2 * 2, 3 + 3]",
+        {
+          statements =
+            [
+              LetStatement
+                {
+                  ident = Identifier (IDENT "x");
+                  value =
+                    ArrayLiteral
+                      ( PAREN LBRACKET,
+                        [
+                          IntegerLiteral (INT "1", 1);
+                          Infix
+                            ( IntegerLiteral (INT "2", 2),
+                              OPERATOR ASTERISK,
+                              "*",
+                              IntegerLiteral (INT "2", 2) );
+                          Infix
+                            ( IntegerLiteral (INT "3", 3),
+                              OPERATOR PLUS,
+                              "+",
+                              IntegerLiteral (INT "3", 3) );
+                        ] );
+                };
+            ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let program = input |> tokenize |> parse in
+        check
+          (testable (Fmt.of_to_string string_of_program) ( = ))
+          ("Parsing:\n" ^ input) expected program
+  in
+  List.iter test_fn cases
+
+let test_index_expressions () =
+  let cases =
+    [
+      ( "myArray[1+1]",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (IndexExpression
+                   ( PAREN LBRACKET,
+                     Identifier (IDENT "myArray"),
+                     Infix
+                       ( IntegerLiteral (INT "1", 1),
+                         OPERATOR PLUS,
+                         "+",
+                         IntegerLiteral (INT "1", 1) ) ));
+            ];
+          errors = [];
+        } );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let program = input |> tokenize |> parse in
+        check
+          (testable (Fmt.of_to_string string_of_program) ( = ))
+          ("Parsing:\n" ^ input) expected program
+  in
+  List.iter test_fn cases
+
 let () =
   run "Parser Test"
     [
@@ -771,4 +868,7 @@ let () =
         [ test_case "Basic" `Quick test_parser_additional ] );
       ( "Parsing string literal",
         [ test_case "Basic" `Quick test_string_literal_expressions ] );
+      ("Parsing array literal", [ test_case "Basic" `Quick test_array_literals ]);
+      ( "Parsing index expressions",
+        [ test_case "Basic" `Quick test_index_expressions ] );
     ]

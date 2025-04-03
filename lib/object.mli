@@ -4,6 +4,7 @@ type data_obj =
   | IntegerObj of int
   | StringObj of string
   | BooleanObj of bool
+  | ArrayObj of data_obj list
   | NullObj
   | ReturnValueObj of data_obj
   | ErrorObj of string

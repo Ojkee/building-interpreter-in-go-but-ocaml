@@ -12,7 +12,7 @@ type operator =
 
 type delimiter = COMMA | SEMICOLON
 type keyword = FUNCTION | LET | TRUE | FALSE | IF | ELSE | RETURN
-type parenthesis = LPAREN | RPAREN | LBRACE | RBRACE
+type parenthesis = LPAREN | RPAREN | LBRACE | RBRACE | LBRACKET | RBRACKET
 
 type token =
   | ILLEGAL of string
@@ -54,6 +54,8 @@ let string_of_parenthesis = function
   | RPAREN -> ")"
   | LBRACE -> "{"
   | RBRACE -> "}"
+  | LBRACKET -> "["
+  | RBRACKET -> "]"
 
 let string_of_token = function
   | ILLEGAL x -> "ILLEGAL(" ^ x ^ ")"
@@ -87,7 +89,16 @@ let is_digit = function '0' .. '9' -> true | _ -> false
 let is_whitespace = function ' ' | '\n' | '\t' | '\r' -> true | _ -> false
 
 let is_infix_operator = function
-  | PLUS | MINUS | SLASH | ASTERISK | EQ | NOT_EQ | LT | GT -> true
+  | OPERATOR PLUS
+  | OPERATOR MINUS
+  | OPERATOR SLASH
+  | OPERATOR ASTERISK
+  | OPERATOR EQ
+  | OPERATOR NOT_EQ
+  | OPERATOR LT
+  | OPERATOR GT
+  | PAREN LBRACKET ->
+      true
   | _ -> false
 
 let string_rev (s : string) : string =
@@ -143,6 +154,8 @@ let run (chars : char list) : token list =
     | ')' :: tail -> advance tail (PAREN RPAREN :: dst)
     | '{' :: tail -> advance tail (PAREN LBRACE :: dst)
     | '}' :: tail -> advance tail (PAREN RBRACE :: dst)
+    | '[' :: tail -> advance tail (PAREN LBRACKET :: dst)
+    | ']' :: tail -> advance tail (PAREN RBRACKET :: dst)
     | ',' :: tail -> advance tail (DELIMITER COMMA :: dst)
     | ';' :: tail -> advance tail (DELIMITER SEMICOLON :: dst)
     | '"' :: tail -> (

@@ -42,6 +42,19 @@ let rec eval (env : enviroment) (node : node_type) : data_obj =
   | `Expr (IntegerLiteral (_, value)) -> IntegerObj value
   | `Expr (StringLiteral (_, value)) -> StringObj value
   | `Expr (Boolean (_, value)) -> BooleanObj value
+  | `Expr (IndexExpression (_, lexpr, idx_expr)) -> (
+      match (eval env (`Expr lexpr), eval env (`Expr idx_expr)) with
+      | (ErrorObj _ as err), _ -> err
+      | _, (ErrorObj _ as err) -> err
+      | ArrayObj elements, IntegerObj idx
+        when idx < 0 || List.length elements - 1 < idx ->
+          NullObj
+      | ArrayObj elements, IntegerObj idx ->
+          idx |> string_of_int |> print_endline;
+          List.nth elements idx
+      | left_obj, _ ->
+          new_error "index operator not supported: %s"
+            (type_string_of_object left_obj))
   | `Expr (Prefix (prefix_tok, _, value)) -> (
       match eval env (`Expr value) with
       | ErrorObj _ as err -> err
@@ -101,6 +114,10 @@ let rec eval (env : enviroment) (node : node_type) : data_obj =
           | [ (ErrorObj _ as err) ] -> err
           | args -> apply_function fn args)
       | obj -> new_error "can't call %s" (string_of_object obj))
+  | `Expr (ArrayLiteral (_, exprs)) -> (
+      match eval_expressions env exprs with
+      | [ (ErrorObj _ as err) ] -> err
+      | objs -> ArrayObj objs)
   | `Expr expr ->
       new_error "Unimplemented expression type in eval: %s"
         (string_of_expression expr)

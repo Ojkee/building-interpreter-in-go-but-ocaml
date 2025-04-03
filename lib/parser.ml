@@ -8,20 +8,19 @@ let rec skip_till_semicolon = function
 
 let expected_err f s = Printf.sprintf "expected '%s'; got '%s'" f s
 
-let infixable (prec : precedence) (op : operator) : bool =
-  is_infix_operator op
-  && precedence_value prec < token_precendence_value (OPERATOR op)
+let infixable (prec : precedence) (op : token) : bool =
+  is_infix_operator op && precedence_value prec < token_precendence_value op
 
-let parse_function_parameters (tokens : token list) :
+let split_idents_by_comma (tokens : token list) (endToken : token) :
     expression list * token list * string list =
   let rec parse_function_parameters' t params errs =
     match t with
     | [] | [ EOF ] -> (params, [ EOF ], errs)
-    | IDENT x :: PAREN RPAREN :: tail ->
+    | IDENT x :: p :: tail when p = endToken ->
         (Identifier (IDENT x) :: params, tail, errs)
     | IDENT x :: DELIMITER COMMA :: (IDENT _ :: _ as tail) ->
         parse_function_parameters' tail (Identifier (IDENT x) :: params) errs
-    | PAREN RPAREN :: tail -> (params, tail, errs)
+    | p :: tail when p = endToken -> (params, tail, errs)
     | _ -> (params, t, "Parsing function parameters err" :: errs)
   in
   match parse_function_parameters' tokens [] [] with
@@ -52,12 +51,17 @@ and parse_prefix (tokens : token list) : (expression * token list) option =
           | PAREN RPAREN :: rrest -> Some (expr, rrest)
           | _ -> None)
       | None -> None)
+  | PAREN LBRACKET :: t ->
+      let elements, after_params, _ (* Errs *) =
+        parse_call_arguments t (PAREN RBRACKET)
+      in
+      Some (build_array_literal elements, after_params)
   | _ -> None
 
 and parse_infix (lexpr : expression) (tokens : token list) (prec : precedence) :
     (expression * token list) option =
   match tokens with
-  | (OPERATOR op as op_token) :: rest when infixable prec op -> (
+  | (OPERATOR op as op_token) :: rest when infixable prec op_token -> (
       let cur_prec = precedence_of_token op_token in
       match parse_expression rest cur_prec with
       | Some (rexpr, rrest) ->
@@ -66,16 +70,26 @@ and parse_infix (lexpr : expression) (tokens : token list) (prec : precedence) :
             rrest prec
       | None -> Some (lexpr, tokens))
   | PAREN LPAREN :: rest ->
-      let exprs, after_args, _ (* args_errs *) = parse_call_arguments rest in
+      let exprs, after_args, _ (* args_errs *) =
+        parse_call_arguments rest (PAREN RPAREN)
+      in
       Some (CallExpression (PAREN LPAREN, lexpr, exprs), after_args)
+  | PAREN LBRACKET :: rest -> (
+      match parse_expression rest LOWEST with
+      | Some (rexpr, PAREN RBRACKET :: rrest) ->
+          parse_infix
+            (IndexExpression (PAREN LBRACKET, lexpr, rexpr))
+            rrest prec
+      | None -> Some (lexpr, tokens)
+      | _ -> None)
   | _ -> Some (lexpr, tokens)
 
-and parse_call_arguments (tokens : token list) :
+and parse_call_arguments (tokens : token list) (endToken : token) :
     expression list * token list * string list =
   let rec parse_call_arguments' toks exprs errs =
     match toks with
     | [] | [ EOF ] -> (exprs, toks, errs)
-    | PAREN RPAREN :: rest -> (exprs, rest, errs)
+    | p :: rest when p = endToken -> (exprs, rest, errs)
     | DELIMITER COMMA :: rest -> (
         match parse_expression rest LOWEST with
         | Some (expr, after_arg) ->
@@ -98,7 +112,7 @@ let parse (tokens : token list) : program =
     | PAREN RBRACE :: t ->
         ({ statements = List.rev stmts; errors = List.rev errs }, t)
     | KEYWORD LET
-      :: IDENT x
+      :: IDENT ident
       :: OPERATOR ASSIGN
       :: KEYWORD IF
       :: PAREN LPAREN
@@ -114,66 +128,58 @@ let parse (tokens : token list) : program =
                     | ( { statements = alter; errors = alter_errs },
                         tokens_after_alternative ) ->
                         advance tokens_after_alternative
-                          (LetStatement
-                             {
-                               ident = Identifier (IDENT x);
-                               value = build_if_expr cond cons (Some alter);
-                             }
+                          (build_let_statement ident
+                             (build_if_expr cond cons (Some alter))
                           :: stmts)
                           (alter_errs @ errs))
                 | rest ->
                     advance rest
-                      (LetStatement
-                         {
-                           ident = Identifier (IDENT x);
-                           value = build_if_expr cond cons None;
-                         }
+                      (build_let_statement ident (build_if_expr cond cons None)
                       :: stmts)
                       (cons_errs @ errs)))
         | None -> advance t stmts ("Parse if err" :: errs))
     | KEYWORD LET
-      :: IDENT x
+      :: IDENT ident
       :: OPERATOR ASSIGN
       :: KEYWORD FUNCTION
       :: PAREN LPAREN
       :: t -> (
-        let params, after_params, param_errs = parse_function_parameters t in
+        let params, after_params, param_errs =
+          split_idents_by_comma t (PAREN RPAREN)
+        in
         match after_params with
         | PAREN LBRACE :: rest -> (
             match advance rest [] [] with
             | ( { statements = body_stmts; errors = body_errs },
                 PAREN LPAREN :: after_body ) ->
                 let call_params, after_call, call_errs =
-                  parse_call_arguments after_body
+                  parse_call_arguments after_body (PAREN RPAREN)
                 in
                 advance after_call
-                  (LetStatement
-                     {
-                       ident = Identifier (IDENT x);
-                       value =
-                         build_call
-                           (build_fn_literal params body_stmts)
-                           call_params;
-                     }
+                  (build_let_statement ident
+                     (build_call
+                        (build_fn_literal params body_stmts)
+                        call_params)
                   :: stmts)
                   (body_errs @ call_errs @ errs)
             | { statements = body_stmts; errors = body_errs }, after_body ->
                 advance after_body
-                  (LetStatement
-                     {
-                       ident = Identifier (IDENT x);
-                       value = build_fn_literal params body_stmts;
-                     }
+                  (build_let_statement ident
+                     (build_fn_literal params body_stmts)
                   :: stmts)
                   (param_errs @ body_errs @ errs))
         | rest -> advance rest stmts errs)
-    | KEYWORD LET :: IDENT x :: OPERATOR ASSIGN :: t -> (
+    | KEYWORD LET :: IDENT ident :: OPERATOR ASSIGN :: PAREN LBRACKET :: t ->
+        let elements, after_params, param_errs =
+          parse_call_arguments t (PAREN RBRACKET)
+        in
+        advance after_params
+          (build_let_statement ident (build_array_literal elements) :: stmts)
+          (param_errs @ errs)
+    | KEYWORD LET :: IDENT ident :: OPERATOR ASSIGN :: t -> (
         match parse_expression t LOWEST with
         | Some (expr, after_exrp) ->
-            advance after_exrp
-              (LetStatement { ident = Identifier (IDENT x); value = expr }
-              :: stmts)
-              errs
+            advance after_exrp (build_let_statement ident expr :: stmts) errs
         | None ->
             advance (skip_till_semicolon t) stmts
               ("Parsing let body err" :: errs))
@@ -221,14 +227,16 @@ let parse (tokens : token list) : program =
     | KEYWORD IF :: h :: t ->
         advance t stmts (expected_err "'('" (string_of_token h) :: errs)
     | KEYWORD FUNCTION :: PAREN LPAREN :: t -> (
-        let params, after_params, param_errs = parse_function_parameters t in
+        let params, after_params, param_errs =
+          split_idents_by_comma t (PAREN RPAREN)
+        in
         match after_params with
         | PAREN LBRACE :: rest -> (
             match advance rest [] [] with
             | ( { statements = body_stmts; errors = body_errs },
                 PAREN LPAREN :: after_body ) ->
                 let call_params, after_call, call_errs =
-                  parse_call_arguments after_body
+                  parse_call_arguments after_body (PAREN RPAREN)
                 in
                 advance after_call
                   (ExpressionStatement
@@ -250,7 +258,8 @@ let parse (tokens : token list) : program =
            | OPERATOR BANG
            | KEYWORD TRUE
            | KEYWORD FALSE
-           | PAREN LPAREN ->
+           | PAREN LPAREN
+           | PAREN LBRACKET ->
                true
            | _ -> false -> (
         match parse_expression tokens LOWEST with

@@ -5,6 +5,8 @@ type expression =
   | IntegerLiteral of token * int
   | StringLiteral of token * string
   | Boolean of token * bool
+  | ArrayLiteral of token * expression list
+  | IndexExpression of token * expression * expression
   | Prefix of token * string * expression
   | Infix of expression * token * string * expression
   | IfExpression of token * expression * block * block option
@@ -30,6 +32,7 @@ type precedence =
   | PRODUCT
   | PREFIX
   | CALL
+  | INDEX
 
 let rec string_of_expression = function
   | Identifier (IDENT x) -> x
@@ -37,6 +40,11 @@ let rec string_of_expression = function
   | IntegerLiteral (_, x) -> string_of_int x
   | StringLiteral (_, x) -> x
   | Boolean (_, x) -> string_of_bool x
+  | ArrayLiteral (_, exprs) ->
+      exprs |> List.map string_of_expression |> String.concat ", " |> fun x ->
+      "[" ^ x ^ "]"
+  | IndexExpression (_, left, idx) ->
+      "(" ^ string_of_expression left ^ "[" ^ string_of_expression idx ^ "])"
   | Prefix (_, op, x) -> "(" ^ op ^ string_of_expression x ^ ")"
   | Infix (x1, _, op, x2) ->
       "(" ^ string_of_expression x1 ^ op ^ string_of_expression x2 ^ ")"
@@ -86,6 +94,7 @@ let precedence_value = function
   | PRODUCT -> 4
   | PREFIX -> 5
   | CALL -> 6
+  | INDEX -> 7
 
 let precedence_of_token = function
   | Lexer.(OPERATOR EQ) -> EQUALS
@@ -97,10 +106,14 @@ let precedence_of_token = function
   | Lexer.(OPERATOR SLASH) -> PRODUCT
   | Lexer.(OPERATOR ASTERISK) -> PRODUCT
   | Lexer.(PAREN LBRACE) -> CALL
+  | Lexer.(PAREN LBRACKET) -> INDEX
   | _ -> LOWEST
 
 let token_precendence_value (tok : Lexer.token) : int =
   tok |> precedence_of_token |> precedence_value
+
+let build_let_statement (ident' : string) (value' : expression) : statement =
+  LetStatement { ident = Identifier (IDENT ident'); value = value' }
 
 let build_if_expr (cond : expression) (cons : statement list)
     (alter : statement list option) : expression =
@@ -120,3 +133,6 @@ let build_fn_literal (params : expression list) (body_stmts : statement list) :
 let build_call (ident : expression) (call_params : expression list) : expression
     =
   CallExpression (PAREN LPAREN, ident, call_params)
+
+let build_array_literal (elements : expression list) : expression =
+  ArrayLiteral (PAREN LBRACKET, elements)

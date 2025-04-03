@@ -256,9 +256,49 @@ let test_eval_builtin_functions () =
       ("len(\"\")", IntegerObj 0);
       ("len(\"four\")", IntegerObj 4);
       ("len(\"hello world\")", IntegerObj 11);
-      ("len(1)", ErrorObj "argument to `len` not supported, got INTEGER");
+      ("len(1)", ErrorObj "argument to `len` not supported, got: INTEGER");
       ( "len(\"one\", \"two\")",
-        ErrorObj "wrong number of arguments. got=2, want=1" );
+        ErrorObj "wrong number of arguments. (want: 1, got: 2)" );
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object_deb) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases
+
+let test_eval_array_literals () =
+  let cases =
+    [
+      ("[1, 2 * 2, 3 + 3", ArrayObj [ IntegerObj 1; IntegerObj 4; IntegerObj 6 ]);
+    ]
+  in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object_deb) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases
+
+let test_eval_index_expressions () =
+  let cases =
+    [
+      ("[1, 2, 3][0]", IntegerObj 1);
+      ("[1, 2, 3][1]", IntegerObj 2);
+      ("[1, 2, 3][2]", IntegerObj 3);
+      ("let i = 0; [1][i]", IntegerObj 1);
+      ("[1, 2, 3][1+1]", IntegerObj 3);
+      ("let myArray = [1, 2, 3]; myArray[2]", IntegerObj 3);
+      ( "let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];",
+        IntegerObj 6 );
+      ("let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]", IntegerObj 2);
+      ("[1, 2, 3][3]", NullObj);
+      ("[1, 2, 3][-1]", NullObj);
     ]
   in
   let test_fn = function
@@ -295,4 +335,8 @@ let () =
       ("Testing eval string", [ test_case "Basic" `Quick test_eval_string ]);
       ( "Testing eval builtin functions",
         [ test_case "Basic" `Quick test_eval_builtin_functions ] );
+      ( "Testing eval array literars",
+        [ test_case "Basic" `Quick test_eval_array_literals ] );
+      ( "Testing eval index expressions",
+        [ test_case "Basic" `Quick test_eval_index_expressions ] );
     ]

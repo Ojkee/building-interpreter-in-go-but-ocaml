@@ -4,6 +4,7 @@ type data_obj =
   | IntegerObj of int
   | StringObj of string
   | BooleanObj of bool
+  | ArrayObj of data_obj list
   | NullObj
   | ReturnValueObj of data_obj
   | ErrorObj of string
@@ -35,6 +36,9 @@ let rec string_of_object = function
   | IntegerObj x -> string_of_int x
   | StringObj x -> "\"" ^ x ^ "\""
   | BooleanObj x -> string_of_bool x
+  | ArrayObj elements ->
+      elements |> List.map string_of_object |> String.concat ", " |> fun x ->
+      "[" ^ x ^ "]"
   | NullObj -> "NULL"
   | ReturnValueObj x -> string_of_object x
   | ErrorObj x -> "Err:\t" ^ x
@@ -49,6 +53,7 @@ let string_of_object_repl = function
   | IntegerObj x -> string_of_int x
   | StringObj x -> x
   | BooleanObj x -> string_of_bool x
+  | ArrayObj _ as obj -> string_of_object obj
   | NullObj -> "NULL"
   | ReturnValueObj x -> string_of_object x
   | ErrorObj x -> "Err:\t" ^ x
@@ -58,6 +63,9 @@ let rec string_of_object_deb = function
   | IntegerObj x -> "obj(" ^ string_of_int x ^ ")"
   | StringObj _ as str -> "str(" ^ string_of_object str ^ ")"
   | BooleanObj x -> "obj(" ^ string_of_bool x ^ ")"
+  | ArrayObj elements ->
+      elements |> List.map string_of_object |> String.concat ", " |> fun x ->
+      "ary([" ^ x ^ "])"
   | NullObj -> "NULL"
   | ReturnValueObj x -> "ret(" ^ string_of_object_deb x ^ ")"
   | ErrorObj x -> "err(" ^ x ^ ")"
@@ -72,6 +80,7 @@ let rec type_string_of_object = function
   | IntegerObj _ -> "INTEGER"
   | StringObj _ -> "STRING"
   | BooleanObj _ -> "BOOLEAN"
+  | ArrayObj _ -> "ARRAY"
   | NullObj -> "NULL"
   | ReturnValueObj x -> "(RETURN (" ^ type_string_of_object x ^ ")"
   | ErrorObj x -> "ERROR(" ^ x ^ ")"
