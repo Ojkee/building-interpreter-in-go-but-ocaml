@@ -310,6 +310,18 @@ let test_eval_index_expressions () =
   in
   List.iter test_fn cases
 
+let test_eval_complex_programs () =
+  let cases = [] in
+  let test_fn = function
+    | input, expected ->
+        let obj = input |> tokenize |> parse |> evaluate in
+        check
+          (testable (Fmt.of_to_string string_of_object_deb) ( = ))
+          ("Parsing:\n" ^ input) expected obj
+  in
+  List.iter test_fn cases;
+  failwith "TODO: write tests page: 180"
+
 let () =
   run "Parser Test"
     [
@@ -339,4 +351,6 @@ let () =
         [ test_case "Basic" `Quick test_eval_array_literals ] );
       ( "Testing eval index expressions",
         [ test_case "Basic" `Quick test_eval_index_expressions ] );
+      ( "Testing eval complex programs",
+        [ test_case "Basic" `Quick test_eval_complex_programs ] );
     ]
