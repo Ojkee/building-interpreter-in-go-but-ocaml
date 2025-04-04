@@ -354,9 +354,6 @@ let test_eval_complex_programs () =
   let test_fn = function
     | input, expected ->
         let obj = input |> tokenize |> parse |> evaluate in
-        print_endline "=========TEST EVAL ======";
-        input |> tokenize |> parse |> Lib.Ast.string_of_program |> print_endline;
-        print_endline "=========================";
         check
           (testable (Fmt.of_to_string string_of_object_deb) ( = ))
           ("Parsing:\n" ^ input) expected obj
