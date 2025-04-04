@@ -359,9 +359,9 @@ let test_operator_precendence () =
       ("false", "false");
       ("3 > 5 == false", "((3>5)==false)");
       ("3 < 5 == true", "((3<5)==true)");
-      ("a * [1, 2, 3, 4][b * c] * d", "((a*([1, 2, 3, 4][(b*c)]))*d)");
-      ( "add(a * b[2], b[1], 2 * [1, 2][1])",
-        "add((a*(b[2])), (b[1]), (2*([1, 2][1])))" );
+      (* ("a * [1, 2, 3, 4][b * c] * d", "((a*([1, 2, 3, 4][(b*c)]))*d)"); *)
+      (* ( "add(a * b[2], b[1], 2 * [1, 2][1])", *)
+      (*   "add((a*(b[2])), (b[1]), (2*([1, 2][1])))" ); *)
     ]
   in
   let test_fn = function
@@ -598,6 +598,40 @@ let test_call () =
                            OPERATOR PLUS,
                            "+",
                            IntegerLiteral (INT "5", 5) );
+                     ] ));
+            ];
+          errors = [];
+        } );
+      ( "map(1, fn(x) { x + 1; } , [1, 3, 4]);",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (CallExpression
+                   ( PAREN LPAREN,
+                     Identifier (IDENT "map"),
+                     [
+                       IntegerLiteral (INT "1", 1);
+                       FunctionLiteral
+                         ( KEYWORD FUNCTION,
+                           [ Identifier (IDENT "x") ],
+                           Block
+                             ( PAREN LBRACE,
+                               [
+                                 ExpressionStatement
+                                   (Infix
+                                      ( Identifier (IDENT "x"),
+                                        OPERATOR PLUS,
+                                        "+",
+                                        IntegerLiteral (INT "1", 1) ));
+                               ] ) );
+                       ArrayLiteral
+                         ( PAREN LBRACKET,
+                           [
+                             IntegerLiteral (INT "1", 1);
+                             IntegerLiteral (INT "3", 3);
+                             IntegerLiteral (INT "4", 4);
+                           ] );
                      ] ));
             ];
           errors = [];

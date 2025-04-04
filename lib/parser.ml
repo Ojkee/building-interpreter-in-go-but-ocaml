@@ -1,271 +1,216 @@
 open Lexer
 open Ast
 
-let rec skip_till_semicolon = function
-  | [] | [ EOF ] -> [ EOF ]
-  | DELIMITER SEMICOLON :: t -> t
-  | _ :: t -> skip_till_semicolon t
-
 let expected_err f s = Printf.sprintf "expected '%s'; got '%s'" f s
 
 let infixable (prec : precedence) (op : token) : bool =
   is_infix_operator op && precedence_value prec < token_precendence_value op
 
-let split_idents_by_comma (tokens : token list) (endToken : token) :
-    expression list * token list * string list =
-  let rec parse_function_parameters' t params errs =
-    match t with
-    | [] | [ EOF ] -> (params, [ EOF ], errs)
-    | IDENT x :: p :: tail when p = endToken ->
-        (Identifier (IDENT x) :: params, tail, errs)
-    | IDENT x :: DELIMITER COMMA :: (IDENT _ :: _ as tail) ->
-        parse_function_parameters' tail (Identifier (IDENT x) :: params) errs
-    | p :: tail when p = endToken -> (params, tail, errs)
-    | _ -> (params, t, "Parsing function parameters err" :: errs)
-  in
-  match parse_function_parameters' tokens [] [] with
-  | params, rest, errs -> (List.rev params, rest, errs)
+let is_prefix_op = function BANG | MINUS -> true | _ -> false
 
-let rec parse_expression (tokens : token list) (prec : precedence) :
-    (expression * token list) option =
-  match parse_prefix tokens with
-  | Some (lexpr, rest) -> parse_infix lexpr rest prec
-  | None -> None
-
-and parse_prefix (tokens : token list) : (expression * token list) option =
+let rec skip_till_semicolon (tokens : token list) : token list =
   match tokens with
-  | IDENT x :: t -> Some (Identifier (IDENT x), t)
-  | INT x :: t -> Some (IntegerLiteral (INT x, int_of_string x), t)
-  | STRING x :: t -> Some (StringLiteral (STRING x, x), t)
-  | KEYWORD TRUE :: t -> Some (Boolean (KEYWORD TRUE, true), t)
-  | KEYWORD FALSE :: t -> Some (Boolean (KEYWORD FALSE, false), t)
-  | OPERATOR op :: t when match op with MINUS | BANG -> true | _ -> false -> (
-      match parse_expression t PREFIX with
-      | Some (expr, rest) ->
-          Some (Prefix (OPERATOR op, string_of_operator op, expr), rest)
-      | None -> None)
-  | PAREN LPAREN :: t -> (
-      match parse_expression t LOWEST with
-      | Some (expr, rest) -> (
-          match rest with
-          | PAREN RPAREN :: rrest -> Some (expr, rrest)
-          | _ -> None)
-      | None -> None)
-  | PAREN LBRACKET :: t ->
-      let elements, after_params, _ (* Errs *) =
-        parse_call_arguments t (PAREN RBRACKET)
-      in
-      Some (build_array_literal elements, after_params)
-  | _ -> None
+  | [] | [ EOF ] -> [ EOF ]
+  | DELIMITER SEMICOLON :: t -> t
+  | _ :: t -> skip_till_semicolon t
 
-and parse_infix (lexpr : expression) (tokens : token list) (prec : precedence) :
-    (expression * token list) option =
-  match tokens with
-  | (OPERATOR op as op_token) :: rest when infixable prec op_token -> (
-      let cur_prec = precedence_of_token op_token in
-      match parse_expression rest cur_prec with
-      | Some (rexpr, rrest) ->
-          parse_infix
-            (Infix (lexpr, op_token, string_of_operator op, rexpr))
-            rrest prec
-      | None -> Some (lexpr, tokens))
-  | PAREN LPAREN :: rest ->
-      let exprs, after_args, _ (* args_errs *) =
-        parse_call_arguments rest (PAREN RPAREN)
-      in
-      Some (CallExpression (PAREN LPAREN, lexpr, exprs), after_args)
-  | PAREN LBRACKET :: rest -> (
-      match parse_expression rest LOWEST with
-      | Some (rexpr, PAREN RBRACKET :: rrest) ->
-          parse_infix
-            (IndexExpression (PAREN LBRACKET, lexpr, rexpr))
-            rrest prec
-      | None -> Some (lexpr, tokens)
-      | _ -> None)
-  | _ -> Some (lexpr, tokens)
-
-and parse_call_arguments (tokens : token list) (endToken : token) :
-    expression list * token list * string list =
-  let rec parse_call_arguments' toks exprs errs =
-    match toks with
-    | [] | [ EOF ] -> (exprs, toks, errs)
-    | p :: rest when p = endToken -> (exprs, rest, errs)
-    | DELIMITER COMMA :: rest -> (
-        match parse_expression rest LOWEST with
-        | Some (expr, after_arg) ->
-            parse_call_arguments' after_arg (expr :: exprs) errs
-        | None -> (exprs, toks, "Parse call arguments err" :: errs))
-    | _ -> (
-        match parse_expression toks LOWEST with
-        | Some (expr, after_arg) ->
-            parse_call_arguments' after_arg (expr :: exprs) errs
-        | None -> (exprs, toks, "Parse call arguments err" :: errs))
-  in
-  match parse_call_arguments' tokens [] [] with
-  | exprs, rest, errs -> (List.rev exprs, rest, errs)
-
-let parse (tokens : token list) : program =
-  let rec advance tokens stmts errs =
+let split_idents_by_comma (endToken : token) (tokens : token list) :
+    (expression list, string) result * token list =
+  let rec parse_function_parameters' idents tokens =
     match tokens with
-    | [] | [ EOF ] ->
-        ({ statements = List.rev stmts; errors = List.rev errs }, [ EOF ])
-    | PAREN RBRACE :: t ->
-        ({ statements = List.rev stmts; errors = List.rev errs }, t)
-    | KEYWORD LET
-      :: IDENT ident
-      :: OPERATOR ASSIGN
-      :: KEYWORD IF
-      :: PAREN LPAREN
-      :: t -> (
-        match parse_expression t LOWEST with
-        | Some (cond, tokens_after_cond) -> (
-            match advance tokens_after_cond [] [] with
-            | ( { statements = cons; errors = cons_errs },
-                tokens_after_consequence ) -> (
-                match tokens_after_consequence with
-                | KEYWORD ELSE :: PAREN LBRACE :: tokens_after_else -> (
-                    match advance tokens_after_else [] [] with
-                    | ( { statements = alter; errors = alter_errs },
-                        tokens_after_alternative ) ->
-                        advance tokens_after_alternative
-                          (build_let_statement ident
-                             (build_if_expr cond cons (Some alter))
-                          :: stmts)
-                          (alter_errs @ errs))
-                | rest ->
-                    advance rest
-                      (build_let_statement ident (build_if_expr cond cons None)
-                      :: stmts)
-                      (cons_errs @ errs)))
-        | None -> advance t stmts ("Parse if err" :: errs))
-    | KEYWORD LET
-      :: IDENT ident
-      :: OPERATOR ASSIGN
-      :: KEYWORD FUNCTION
-      :: PAREN LPAREN
-      :: t -> (
-        let params, after_params, param_errs =
-          split_idents_by_comma t (PAREN RPAREN)
-        in
-        match after_params with
-        | PAREN LBRACE :: rest -> (
-            match advance rest [] [] with
-            | ( { statements = body_stmts; errors = body_errs },
-                PAREN LPAREN :: after_body ) ->
-                let call_params, after_call, call_errs =
-                  parse_call_arguments after_body (PAREN RPAREN)
-                in
-                advance after_call
-                  (build_let_statement ident
-                     (build_call
-                        (build_fn_literal params body_stmts)
-                        call_params)
-                  :: stmts)
-                  (body_errs @ call_errs @ errs)
-            | { statements = body_stmts; errors = body_errs }, after_body ->
-                advance after_body
-                  (build_let_statement ident
-                     (build_fn_literal params body_stmts)
-                  :: stmts)
-                  (param_errs @ body_errs @ errs))
-        | rest -> advance rest stmts errs)
-    | KEYWORD LET :: IDENT ident :: OPERATOR ASSIGN :: PAREN LBRACKET :: t ->
-        let elements, after_params, param_errs =
-          parse_call_arguments t (PAREN RBRACKET)
-        in
-        advance after_params
-          (build_let_statement ident (build_array_literal elements) :: stmts)
-          (param_errs @ errs)
-    | KEYWORD LET :: IDENT ident :: OPERATOR ASSIGN :: t -> (
-        match parse_expression t LOWEST with
-        | Some (expr, after_exrp) ->
-            advance after_exrp (build_let_statement ident expr :: stmts) errs
-        | None ->
-            advance (skip_till_semicolon t) stmts
-              ("Parsing let body err" :: errs))
-    | KEYWORD LET :: h1 :: h2 :: _ -> (
-        match (h1, h2) with
-        | IDENT _, h2 ->
-            advance
-              (skip_till_semicolon tokens)
-              stmts
-              (expected_err "=" (string_of_token h2) :: errs)
-        | h1, _ ->
-            advance
-              (skip_till_semicolon tokens)
-              stmts
-              (expected_err "IDENT" (string_of_token h1) :: errs))
-    | KEYWORD RETURN :: t -> (
-        match parse_expression t LOWEST with
-        | Some (expr, after_exrp) ->
-            advance after_exrp (ReturnStatement expr :: stmts) errs
-        | None ->
-            advance (skip_till_semicolon t) stmts
-              ("Parsing return body err" :: errs))
-    | KEYWORD IF :: PAREN LPAREN :: t -> (
-        match parse_expression t LOWEST with
-        | Some (cond, tokens_after_cond) -> (
-            match advance tokens_after_cond [] [] with
-            | ( { statements = cons; errors = cons_errs },
-                tokens_after_consequence ) -> (
-                match tokens_after_consequence with
-                | KEYWORD ELSE :: PAREN LBRACE :: tokens_after_else -> (
-                    match advance tokens_after_else [] [] with
-                    | ( { statements = alter; errors = alter_errs },
-                        tokens_after_alternative ) ->
-                        advance tokens_after_alternative
-                          (ExpressionStatement
-                             (build_if_expr cond cons (Some alter))
-                          :: stmts)
-                          (alter_errs @ errs))
-                | rest ->
-                    advance rest
-                      (ExpressionStatement (build_if_expr cond cons None)
-                      :: stmts)
-                      (cons_errs @ errs)))
-        | None -> advance t stmts ("Parse if err" :: errs))
-    | KEYWORD IF :: h :: t ->
-        advance t stmts (expected_err "'('" (string_of_token h) :: errs)
-    | KEYWORD FUNCTION :: PAREN LPAREN :: t -> (
-        let params, after_params, param_errs =
-          split_idents_by_comma t (PAREN RPAREN)
-        in
-        match after_params with
-        | PAREN LBRACE :: rest -> (
-            match advance rest [] [] with
-            | ( { statements = body_stmts; errors = body_errs },
-                PAREN LPAREN :: after_body ) ->
-                let call_params, after_call, call_errs =
-                  parse_call_arguments after_body (PAREN RPAREN)
-                in
-                advance after_call
-                  (ExpressionStatement
-                     (build_call
-                        (build_fn_literal params body_stmts)
-                        call_params)
-                  :: stmts)
-                  (body_errs @ call_errs @ errs)
-            | { statements = body_stmts; errors = body_errs }, after_body ->
-                advance after_body
-                  (ExpressionStatement (build_fn_literal params body_stmts)
-                  :: stmts)
-                  (param_errs @ body_errs @ errs))
-        | rest -> advance rest stmts errs)
-    | h :: t
-      when match h with
-           | INT _ | IDENT _ | STRING _
-           | OPERATOR MINUS
-           | OPERATOR BANG
-           | KEYWORD TRUE
-           | KEYWORD FALSE
-           | PAREN LPAREN
-           | PAREN LBRACKET ->
-               true
-           | _ -> false -> (
-        match parse_expression tokens LOWEST with
-        | Some (expr, rest) ->
-            advance rest (ExpressionStatement expr :: stmts) errs
-        | None -> advance t stmts ("Parse int/ident/-/! err" :: errs))
-    | _ :: t -> advance t stmts errs
+    | [] | [ EOF ] -> (Ok idents, [ EOF ])
+    | (IDENT _ as ident) :: p :: tail when p = endToken ->
+        (Ok (Identifier ident :: idents), tail)
+    | (IDENT _ as ident) :: DELIMITER COMMA :: (IDENT _ :: _ as tail) ->
+        parse_function_parameters' (Identifier ident :: idents) tail
+    | p :: tail when p = endToken -> (Ok idents, tail)
+    | _ -> (Error "split_idents_by_comma err", tokens)
   in
-  match advance tokens [] [] with prog, _ -> prog
+  match parse_function_parameters' [] tokens with
+  | Ok idents, rest -> (Ok (List.rev idents), rest)
+  | err -> err
+
+let rec parse_let_statement (tokens : token list) :
+    (statement, string) result * token list =
+  match tokens with
+  | [] | [ EOF ] -> (Error "parse let statement: EOF", [ EOF ])
+  | KEYWORD LET :: IDENT ident :: OPERATOR ASSIGN :: rest -> (
+      match parse_expression LOWEST rest with
+      | Ok expr, after_expr_tokens ->
+          (Ok (build_let_statement ident expr), after_expr_tokens)
+      | (Error _ as err), _ -> (err, skip_till_semicolon rest))
+  | KEYWORD LET :: (a :: b :: _ as rest) -> (
+      match (a, b) with
+      | IDENT _, b ->
+          ( Error (expected_err "=" (string_of_token b)),
+            skip_till_semicolon rest )
+      | a, _ ->
+          ( Error (expected_err "IDENT" (string_of_token a)),
+            skip_till_semicolon rest ))
+  | _ -> (Error "parse let: Unreachable", skip_till_semicolon tokens)
+
+and parse_return_statement (tokens : token list) :
+    (statement, string) result * token list =
+  let parse_return_statement' tokens =
+    match tokens with
+    | [] | [ EOF ] -> (Error "Parsing return statement err", [ EOF ])
+    | KEYWORD RETURN :: rest -> (
+        match parse_expression LOWEST rest with
+        | Ok expr, after_expr_tokens ->
+            (Ok (ReturnStatement expr), after_expr_tokens)
+        | (Error _ as err), _ -> (err, skip_till_semicolon rest))
+    | _ -> (Error "parse return: Unreachable", skip_till_semicolon tokens)
+  in
+  match parse_return_statement' tokens with
+  | (Ok _ as expr), DELIMITER SEMICOLON :: rest -> (expr, rest)
+  | res -> res
+
+and parse_prefix (tokens : token list) :
+    (expression, string) result * token list =
+  match tokens with
+  | [] | [ EOF ] -> (Error "parse prefix: EOF", [ EOF ])
+  | IDENT x :: t -> (Ok (Identifier (IDENT x)), t)
+  | INT x :: t -> (Ok (IntegerLiteral (INT x, int_of_string x)), t)
+  | STRING x :: t -> (Ok (StringLiteral (STRING x, x)), t)
+  | KEYWORD TRUE :: t -> (Ok (Boolean (KEYWORD TRUE, true)), t)
+  | KEYWORD FALSE :: t -> (Ok (Boolean (KEYWORD FALSE, false)), t)
+  | PAREN LPAREN :: t -> (
+      match parse_expression LOWEST t with
+      | Ok expr, PAREN RPAREN :: rest -> (Ok expr, rest)
+      | Ok _, rest -> (Error "Should be `)` after expression", rest)
+      | (Error _ as err), rest -> (err, rest))
+  | PAREN LBRACKET :: t -> (
+      match split_expressions_by_camma (PAREN RBRACKET) t with
+      | Ok exprs, rest -> (Ok (build_array_literal exprs), rest)
+      | (Error _ as err), rest -> (err, rest))
+  | OPERATOR op :: t when is_prefix_op op -> (
+      match parse_expression PREFIX t with
+      | Ok expr, rest ->
+          (Ok (Prefix (OPERATOR op, string_of_operator op, expr)), rest)
+      | no_expr -> no_expr)
+  | KEYWORD IF :: PAREN LPAREN :: t -> parse_if t
+  | KEYWORD IF :: t -> (Error "Should be `(` after `if`", t)
+  | KEYWORD FUNCTION :: PAREN LPAREN :: t -> parse_fn t
+  | KEYWORD FUNCTION :: t -> (Error "Should be `(` after `if`", t)
+  | h :: t ->
+      ( Error
+          (Printf.sprintf "parse prefix: Unimplemented token `%s`"
+             (string_of_token h)),
+        t )
+
+and parse_infix (lhs : expression) (prec : precedence) (tokens : token list) :
+    (expression, string) result * token list =
+  match tokens with
+  | [] | [ EOF ] -> (Ok lhs, [ EOF ])
+  | DELIMITER SEMICOLON :: _ -> (Ok lhs, tokens)
+  | PAREN LPAREN :: t -> (
+      match split_expressions_by_camma (PAREN RPAREN) t with
+      | Ok exprs, rest -> (Ok (build_call lhs exprs), rest)
+      | (Error _ as err), rest -> (err, rest))
+  | PAREN LBRACKET :: t -> (
+      match parse_expression LOWEST t with
+      | Ok idx, PAREN RBRACKET :: rest ->
+          (Ok (build_index_expression lhs idx), rest)
+      | Ok _, rest -> (Error "Should be `]` after index expression", rest)
+      | (Error _ as err), rest -> (err, rest))
+  | h :: t when infixable prec h -> (
+      let cur_prec = precedence_of_token h in
+      match parse_expression cur_prec t with
+      | Ok rhs, rest ->
+          parse_infix (Infix (lhs, h, string_of_token h, rhs)) prec rest
+      | Error _, rest -> (Ok lhs, rest))
+  | _ -> (Ok lhs, tokens)
+
+and parse_expression (prec : precedence) (tokens : token list) :
+    (expression, string) result * token list =
+  match parse_prefix tokens with
+  | Ok expr, rest -> parse_infix expr prec rest
+  | (Error _ as err), rest -> (err, rest)
+
+and parse_if (tokens : token list) : (expression, string) result * token list =
+  let parse_if' tokens =
+    match parse_expression LOWEST tokens with
+    | Ok cond, PAREN RPAREN :: PAREN LBRACE :: after_cond -> (
+        match parse_block_statements after_cond with
+        | Ok cons_stmts, KEYWORD ELSE :: PAREN LBRACE :: after_cons -> (
+            match parse_block_statements after_cons with
+            | Ok alter_stmts, after_alter ->
+                ( Ok (build_if_expr cond cons_stmts (Some alter_stmts)),
+                  after_alter )
+            | (Error _ as err), after_alter -> (err, after_alter))
+        | Ok cons_stmts, after_cons ->
+            (Ok (build_if_expr cond cons_stmts None), after_cons)
+        | (Error _ as err), after_cons -> (err, after_cons))
+    | Ok _, after_cond ->
+        (Error "Should be `) {` after if condition", after_cond)
+    | no_expr -> no_expr
+  in
+  match parse_if' tokens with
+  | (Ok _ as res), DELIMITER SEMICOLON :: rest -> (res, rest)
+  | res -> res
+
+and parse_fn (tokens : token list) : (expression, string) result * token list =
+  match split_idents_by_comma (PAREN RPAREN) tokens with
+  | Ok idents, after_params -> (
+      match after_params with
+      | PAREN LBRACE :: after_lbrace -> (
+          match parse_block_statements after_lbrace with
+          | Ok stmts, after_fn_body ->
+              (Ok (build_fn_literal idents stmts), after_fn_body)
+          | (Error _ as err), after_fn_body -> (err, after_fn_body))
+      | _ ->
+          (Error "Should be `{` after parameters of the function", after_params)
+      )
+  | (Error _ as err), after_params -> (err, after_params)
+
+and parse_block_statements (tokens : token list) :
+    (statement list, string) result * token list =
+  let rec parse_block_statements' stmts tokens =
+    match (tokens, parse_statement tokens) with
+    | PAREN RBRACE :: t, _ -> (Ok stmts, t)
+    | [], _ | [ EOF ], _ -> (Ok stmts, [ EOF ])
+    | _, ((Error _ as err), rest) -> (err, rest)
+    | _, (Ok stmt, rest) -> parse_block_statements' (stmt :: stmts) rest
+  in
+  parse_block_statements' [] tokens
+
+and split_expressions_by_camma (endToken : token) (tokens : token list) :
+    (expression list, string) result * token list =
+  let rec split_expressions_by_camma' exprs tokens =
+    match tokens with
+    | [] | [ EOF ] -> (Ok exprs, [ EOF ])
+    | p :: t when p = endToken -> (Ok exprs, t)
+    | DELIMITER COMMA :: t | t -> (
+        match parse_expression LOWEST t with
+        | Ok expr, rest -> split_expressions_by_camma' (expr :: exprs) rest
+        | (Error _ as err), rest -> (err, rest))
+  in
+  match split_expressions_by_camma' [] tokens with
+  | Ok exprs, rest -> (Ok (List.rev exprs), rest)
+  | err -> err
+
+and parse_expression_statement (tokens : token list) :
+    (statement, string) result * token list =
+  match parse_expression LOWEST tokens with
+  | Ok expr, DELIMITER SEMICOLON :: rest | Ok expr, rest ->
+      (Ok (ExpressionStatement expr), rest)
+  | (Error _ as err), rest -> (err, rest)
+
+and parse_statement (tokens : token list) :
+    (statement, string) result * token list =
+  match tokens with
+  | KEYWORD LET :: _ -> parse_let_statement tokens
+  | KEYWORD RETURN :: _ -> parse_return_statement tokens
+  | _ -> parse_expression_statement tokens
+
+and parse_statements (stmts : statement list) (errs : string list)
+    (tokens : token list) : program =
+  match tokens with
+  | [] | [ EOF ] -> { statements = List.rev stmts; errors = List.rev errs }
+  | DELIMITER SEMICOLON :: t -> parse_statements stmts errs t
+  | _ -> (
+      match parse_statement tokens with
+      | Ok stmt, rest -> parse_statements (stmt :: stmts) errs rest
+      | Error err, rest -> parse_statements stmts (err :: errs) rest)
+
+let parse (tokens : token list) : program = parse_statements [] [] tokens

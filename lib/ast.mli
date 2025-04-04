@@ -51,3 +51,4 @@ val build_if_expr :
 val build_fn_literal : expression list -> statement list -> expression
 val build_call : expression -> expression list -> expression
 val build_array_literal : expression list -> expression
+val build_index_expression : expression -> expression -> expression

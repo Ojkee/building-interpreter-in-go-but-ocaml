@@ -136,3 +136,6 @@ let build_call (ident : expression) (call_params : expression list) : expression
 
 let build_array_literal (elements : expression list) : expression =
   ArrayLiteral (PAREN LBRACKET, elements)
+
+let build_index_expression (lhs : expression) (idx : expression) : expression =
+  IndexExpression (PAREN LBRACKET, lhs, idx)
