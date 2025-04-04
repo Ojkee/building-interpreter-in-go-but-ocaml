@@ -32,3 +32,7 @@ This project is an implementation of the Monkey programming language in OCaml, i
     - [x] Error Handling
     - [x] Bindings & the Enviroment
 - [ ] Extending the Interpreter
+    - [x] Strings 
+    - [x] Builtin functions 
+    - [x] Arrays
+    - [ ] Hushes

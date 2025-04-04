@@ -30,7 +30,10 @@ let rec get_from_env (env : enviroment) (key : string) : data_obj option =
   | None, Some outer -> get_from_env outer key
   | None, None -> None
 
-let new_error fmt = Printf.ksprintf (fun msg -> ErrorObj msg) fmt
+let err_format = "\027[31m"
+let def_format = "\027[0m"
+let wrap_err_msg msg = err_format ^ msg ^ def_format
+let new_error fmt = Printf.ksprintf (fun msg -> ErrorObj (wrap_err_msg msg)) fmt
 
 let rec string_of_object = function
   | IntegerObj x -> string_of_int x
@@ -65,7 +68,7 @@ let rec string_of_object_deb = function
   | BooleanObj x -> "obj(" ^ string_of_bool x ^ ")"
   | ArrayObj elements ->
       elements |> List.map string_of_object |> String.concat ", " |> fun x ->
-      "ary([" ^ x ^ "])"
+      "arr([" ^ x ^ "])"
   | NullObj -> "NULL"
   | ReturnValueObj x -> "ret(" ^ string_of_object_deb x ^ ")"
   | ErrorObj x -> "err(" ^ x ^ ")"

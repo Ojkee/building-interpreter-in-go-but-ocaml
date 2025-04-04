@@ -16,17 +16,17 @@ let rec skip_till_semicolon (tokens : token list) : token list =
 
 let split_idents_by_comma (endToken : token) (tokens : token list) :
     (expression list, string) result * token list =
-  let rec parse_function_parameters' idents tokens =
+  let rec split_idents_by_comma' idents tokens =
     match tokens with
     | [] | [ EOF ] -> (Ok idents, [ EOF ])
     | (IDENT _ as ident) :: p :: tail when p = endToken ->
         (Ok (Identifier ident :: idents), tail)
     | (IDENT _ as ident) :: DELIMITER COMMA :: (IDENT _ :: _ as tail) ->
-        parse_function_parameters' (Identifier ident :: idents) tail
+        split_idents_by_comma' (Identifier ident :: idents) tail
     | p :: tail when p = endToken -> (Ok idents, tail)
     | _ -> (Error "split_idents_by_comma err", tokens)
   in
-  match parse_function_parameters' [] tokens with
+  match split_idents_by_comma' [] tokens with
   | Ok idents, rest -> (Ok (List.rev idents), rest)
   | err -> err
 
@@ -91,7 +91,8 @@ and parse_prefix (tokens : token list) :
   | KEYWORD IF :: PAREN LPAREN :: t -> parse_if t
   | KEYWORD IF :: t -> (Error "Should be `(` after `if`", t)
   | KEYWORD FUNCTION :: PAREN LPAREN :: t -> parse_fn t
-  | KEYWORD FUNCTION :: t -> (Error "Should be `(` after `if`", t)
+  | KEYWORD FUNCTION :: t -> (Error "Should be `(` after `fn`", t)
+  | DELIMITER SEMICOLON :: t -> parse_prefix t
   | h :: t ->
       ( Error
           (Printf.sprintf "parse prefix: Unimplemented token `%s`"
@@ -105,12 +106,12 @@ and parse_infix (lhs : expression) (prec : precedence) (tokens : token list) :
   | DELIMITER SEMICOLON :: _ -> (Ok lhs, tokens)
   | PAREN LPAREN :: t -> (
       match split_expressions_by_camma (PAREN RPAREN) t with
-      | Ok exprs, rest -> (Ok (build_call lhs exprs), rest)
+      | Ok exprs, rest -> parse_infix (build_call lhs exprs) prec rest
       | (Error _ as err), rest -> (err, rest))
   | PAREN LBRACKET :: t -> (
       match parse_expression LOWEST t with
       | Ok idx, PAREN RBRACKET :: rest ->
-          (Ok (build_index_expression lhs idx), rest)
+          parse_infix (build_index_expression lhs idx) prec rest
       | Ok _, rest -> (Error "Should be `]` after index expression", rest)
       | (Error _ as err), rest -> (err, rest))
   | h :: t when infixable prec h -> (
@@ -172,13 +173,15 @@ and parse_block_statements (tokens : token list) :
     | _, ((Error _ as err), rest) -> (err, rest)
     | _, (Ok stmt, rest) -> parse_block_statements' (stmt :: stmts) rest
   in
-  parse_block_statements' [] tokens
+  match parse_block_statements' [] tokens with
+  | Ok stmts, rest -> (Ok (List.rev stmts), rest)
+  | err -> err
 
 and split_expressions_by_camma (endToken : token) (tokens : token list) :
     (expression list, string) result * token list =
   let rec split_expressions_by_camma' exprs tokens =
     match tokens with
-    | [] | [ EOF ] -> (Ok exprs, [ EOF ])
+    | [] | [ EOF ] -> (Error "split expression by comma: EOF", [ EOF ])
     | p :: t when p = endToken -> (Ok exprs, t)
     | DELIMITER COMMA :: t | t -> (
         match parse_expression LOWEST t with

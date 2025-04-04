@@ -3,12 +3,6 @@ open Lib.Lexer
 open Lib.Ast
 open Lib.Parser
 
-(* let print_stmts statements = *)
-(*   statements *)
-(*   |> string_of_statements *)
-(*   |> (fun x -> "\027[34m[\n" ^ x ^ "\n]\027[0m") *)
-(*   |> print_endline *)
-
 let test_string () =
   let cases =
     [
@@ -359,9 +353,9 @@ let test_operator_precendence () =
       ("false", "false");
       ("3 > 5 == false", "((3>5)==false)");
       ("3 < 5 == true", "((3<5)==true)");
-      (* ("a * [1, 2, 3, 4][b * c] * d", "((a*([1, 2, 3, 4][(b*c)]))*d)"); *)
-      (* ( "add(a * b[2], b[1], 2 * [1, 2][1])", *)
-      (*   "add((a*(b[2])), (b[1]), (2*([1, 2][1])))" ); *)
+      ("a * [1, 2, 3, 4][b * c] * d", "((a*([1, 2, 3, 4][(b*c)]))*d)");
+      ( "add(a * b[2], b[1], 2 * [1, 2][1])",
+        "add((a*(b[2])), (b[1]), (2*([1, 2][1])))" );
     ]
   in
   let test_fn = function
@@ -747,6 +741,32 @@ let test_parser_additional () =
                                    (IntegerLiteral (INT "4", 4));
                                ] )) );
                 };
+            ];
+          errors = [];
+        } );
+      ( "a[0]+a[1]+a[2]",
+        {
+          statements =
+            [
+              ExpressionStatement
+                (Infix
+                   ( Infix
+                       ( IndexExpression
+                           ( PAREN LBRACKET,
+                             Identifier (IDENT "a"),
+                             IntegerLiteral (INT "0", 0) ),
+                         OPERATOR PLUS,
+                         "+",
+                         IndexExpression
+                           ( PAREN LBRACKET,
+                             Identifier (IDENT "a"),
+                             IntegerLiteral (INT "1", 1) ) ),
+                     OPERATOR PLUS,
+                     "+",
+                     IndexExpression
+                       ( PAREN LBRACKET,
+                         Identifier (IDENT "a"),
+                         IntegerLiteral (INT "2", 2) ) ));
             ];
           errors = [];
         } );

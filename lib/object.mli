@@ -22,6 +22,7 @@ and builtinFn = data_obj list -> data_obj
 val new_enviroment : unit -> enviroment
 val enclose_enviroment : enviroment -> enviroment
 val get_from_env : enviroment -> string -> data_obj option
+val wrap_err_msg : string -> string
 val new_error : ('a, unit, string, data_obj) format4 -> 'a
 val string_of_object : data_obj -> string
 val string_of_object_repl : data_obj -> string

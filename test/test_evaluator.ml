@@ -129,16 +129,19 @@ let test_eval_return_statements () =
 let test_eval_error_handling () =
   let cases =
     [
-      ("5 + true", ErrorObj "type mismatch: INTEGER + BOOLEAN");
-      ("5 + true; 5;", ErrorObj "type mismatch: INTEGER + BOOLEAN");
-      ("-true", ErrorObj "unknown operator: -BOOLEAN");
-      ("true + false;", ErrorObj "unknown operator: BOOLEAN + BOOLEAN");
-      ("5; true + false; 5; ", ErrorObj "unknown operator: BOOLEAN + BOOLEAN");
+      ("5 + true", ErrorObj (wrap_err_msg "type mismatch: INTEGER + BOOLEAN"));
+      ( "5 + true; 5;",
+        ErrorObj (wrap_err_msg "type mismatch: INTEGER + BOOLEAN") );
+      ("-true", ErrorObj (wrap_err_msg "unknown operator: -BOOLEAN"));
+      ( "true + false;",
+        ErrorObj (wrap_err_msg "unknown operator: BOOLEAN + BOOLEAN") );
+      ( "5; true + false; 5; ",
+        ErrorObj (wrap_err_msg "unknown operator: BOOLEAN + BOOLEAN") );
       ( "if (10 > 1) { true + false; }",
-        ErrorObj "unknown operator: BOOLEAN + BOOLEAN" );
+        ErrorObj (wrap_err_msg "unknown operator: BOOLEAN + BOOLEAN") );
       ( "if (10 > 1) { if ( 10 > 1 ) { true + false; } return 1; }",
-        ErrorObj "unknown operator: BOOLEAN + BOOLEAN" );
-      ("foobar", ErrorObj "identifier not found: foobar");
+        ErrorObj (wrap_err_msg "unknown operator: BOOLEAN + BOOLEAN") );
+      ("foobar", ErrorObj (wrap_err_msg "identifier not found: foobar"));
     ]
   in
   let test_fn = function
@@ -256,9 +259,12 @@ let test_eval_builtin_functions () =
       ("len(\"\")", IntegerObj 0);
       ("len(\"four\")", IntegerObj 4);
       ("len(\"hello world\")", IntegerObj 11);
-      ("len(1)", ErrorObj "argument to `len` not supported, got: INTEGER");
+      ( "len(1)",
+        ErrorObj (wrap_err_msg "argument to `len` not supported, got: INTEGER")
+      );
       ( "len(\"one\", \"two\")",
-        ErrorObj "wrong number of arguments. (want: 1, got: 2)" );
+        ErrorObj (wrap_err_msg "wrong number of arguments. (want: 1, got: 2)")
+      );
     ]
   in
   let test_fn = function
@@ -273,7 +279,8 @@ let test_eval_builtin_functions () =
 let test_eval_array_literals () =
   let cases =
     [
-      ("[1, 2 * 2, 3 + 3", ArrayObj [ IntegerObj 1; IntegerObj 4; IntegerObj 6 ]);
+      ( "[1, 2 * 2, 3 + 3]",
+        ArrayObj [ IntegerObj 1; IntegerObj 4; IntegerObj 6 ] );
     ]
   in
   let test_fn = function
@@ -347,12 +354,14 @@ let test_eval_complex_programs () =
   let test_fn = function
     | input, expected ->
         let obj = input |> tokenize |> parse |> evaluate in
+        print_endline "=========TEST EVAL ======";
+        input |> tokenize |> parse |> Lib.Ast.string_of_program |> print_endline;
+        print_endline "=========================";
         check
           (testable (Fmt.of_to_string string_of_object_deb) ( = ))
           ("Parsing:\n" ^ input) expected obj
   in
-  List.iter test_fn cases;
-  failwith "TODO: write tests page: 180"
+  List.iter test_fn cases
 
 let () =
   run "Parser Test"

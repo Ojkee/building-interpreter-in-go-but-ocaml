@@ -25,11 +25,10 @@ let populate_env env idents args =
 let rec eval (env : enviroment) (node : node_type) : data_obj =
   match node with
   | `Prog { statements = _; errors = errs } when List.length errs > 0 ->
-      String.concat "\n" errs |> print_endline;
-      NullObj
+      new_error "%s" (String.concat "\n" errs)
   | `Prog prog -> eval_program prog env
   | `Stmt (ExpressionStatement expr) -> eval env (`Expr expr)
-  | `Stmt (ReturnStatement expr) -> eval env (`Expr expr)
+  | `Stmt (ReturnStatement expr) -> ReturnValueObj (eval env (`Expr expr))
   | `Stmt (LetStatement { ident = Identifier (IDENT x); value = v }) -> (
       match eval env (`Expr v) with
       | ErrorObj _ as err -> err
@@ -138,9 +137,9 @@ and eval_block_statements (stmts : statement list) (env : enviroment) : data_obj
   | [] -> NullObj
   | ReturnStatement expr :: _ -> ReturnValueObj (eval env (`Expr expr))
   | [ x ] -> eval env (`Stmt x)
-  | h :: t -> (
-      match eval env (`Stmt h) with
-      | ReturnValueObj x -> x
+  | stmt :: t -> (
+      match eval env (`Stmt stmt) with
+      | ReturnValueObj x -> ReturnValueObj x
       | ErrorObj _ as err_obj -> err_obj
       | _ -> eval_block_statements t env)
 
@@ -152,8 +151,7 @@ and apply_function (fn : data_obj) (args : data_obj list) : data_obj =
   | FunctionObj (_, stmts, _) -> (
       match extend_function_env fn args with
       | _, Some err -> err
-      | Some extended_env, None ->
-          eval_block_statements stmts extended_env |> unpack_return_object
+      | Some extended_env, None -> eval_block_statements stmts extended_env
       | _, _ -> failwith "Unreachable")
   | BuiltinFnObj fn_impl -> fn_impl args
   | obj -> new_error "not a function: %s" (string_of_object obj)
