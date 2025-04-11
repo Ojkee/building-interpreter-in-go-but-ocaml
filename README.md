@@ -35,4 +35,4 @@ This project is an implementation of the Monkey programming language in OCaml, i
     - [x] Strings 
     - [x] Builtin functions 
     - [x] Arrays
-    - [ ] Hushes
+    - [ ] Hushes (will imlement in future)
